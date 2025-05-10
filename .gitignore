@@ -2,4 +2,5 @@
 /fusion
 *.dat
 *.glb
+*.charinfo
 .DS_Store
