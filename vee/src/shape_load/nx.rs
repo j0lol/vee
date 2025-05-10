@@ -226,7 +226,9 @@ impl ShapeElement {
 
         let shape_data = inflate_bytes(&shape_data)?;
 
-        std::fs::write("./shape.dat", shape_data.clone())?;
+        if !cfg!(target_family = "wasm") {
+            std::fs::write("./shape.dat", shape_data.clone())?;
+        }
 
         let data =
             ShapeData::read_options(&mut Cursor::new(shape_data), Endian::Little, self.shape)?;
