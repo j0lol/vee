@@ -1,24 +1,6 @@
-[package]
-name = "vee"
-version = "0.1.0"
-edition = "2024"
-
-[lib]
-name = "vee"
-
-[[bin]]
-name = "viewer"
-path = "src/bin.rs"
-
-
-[dependencies]
-bevy = "0.16.0"
-binrw = "0.15.0"
-flate2 = { version = "1.1.1", features = ["rust_backend", "zlib-rs"] }
-glam = "0.30.3"
-half = "2.6.0"
-mesh-tools = "0.1.0"
-bevy_egui = "0.34.1"
+[workspace]
+resolver = "2"
+members = [ "bevy_viewer", "vee" ]
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

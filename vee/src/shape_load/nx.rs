@@ -1,5 +1,4 @@
-mod utils;
-
+use crate::utils::{Vec3PackedSnorm, inflate_bytes, read_file_slice, u16_to_f32};
 use binrw::{BinRead, Endian};
 use mesh_tools::GltfBuilder;
 use std::{
@@ -7,16 +6,14 @@ use std::{
     fs::File,
     io::{Cursor, Read, Seek, SeekFrom},
 };
-use utils::{decode_reader, inflate_bytes, read_file_slice, u16_to_f32, vec3_packed_snorm};
 
 enum AttributeType {
-    /// Vertex positions. Format: AttributeFormat_16_16_16_16_Float
-    Position = 0, // AttributeFormat_16_16_16_16_Float
-    Normal = 1,  // AttributeFormat_10_10_10_2_Snorm
-    Uv = 2,      // AttributeFormat_16_16_Float
-    Tangent = 3, // AttributeFormat_8_8_8_8_Snorm
-    Param = 4,   // AttributeFormat_8_8_8_8_Unorm
-    End = 5,
+    /// Vertex positions. Format: `AttributeFormat_16_16_16_16_Float`
+    Position = 0, // `AttributeFormat_16_16_16_16_Float`
+    Normal = 1,  // `AttributeFormat_10_10_10_2_Snorm`
+    Uv = 2,      // `AttributeFormat_16_16_Float`
+    Tangent = 3, // `AttributeFormat_8_8_8_8_Snorm`
+    Param = 4,   // `AttributeFormat_8_8_8_8_Unorm`
 }
 
 #[derive(Debug, Clone)]
@@ -28,15 +25,15 @@ pub struct ShapeData {
     pub color_params: Option<Vec<u8>>,
 }
 impl ShapeData {
-    fn gltf(&self, bounding_box: [[f32; 3]; 2]) -> Result<GltfBuilder, Box<dyn Error>> {
+    fn gltf(&self, _bounding_box: [[f32; 3]; 2]) -> GltfBuilder {
         let mut builder = GltfBuilder::new();
 
         let ShapeData {
             positions,
             indices,
-            normals,
-            uvs,
-            color_params,
+            normals: _,
+            uvs: _,
+            color_params: _,
         } = self;
 
         let material = builder.create_basic_material(
@@ -65,7 +62,7 @@ impl ShapeData {
 
         builder.add_scene(Some("Mii Scene".to_string()), Some(vec![mii_shape_node]));
 
-        Ok(builder)
+        builder
     }
 }
 
@@ -77,15 +74,17 @@ impl BinRead for ShapeData {
         endian: binrw::Endian,
         args: Self::Args<'_>,
     ) -> binrw::BinResult<Self> {
-        let offset = u32::read_options(reader, endian, ())?;
-        let saved_position = reader.stream_position()?;
+        const PER_VERTEX_SIZE: u32 = 8;
+        const PER_INDEX_SIZE: u32 = 2;
+
+        // let offset = u32::read_options(reader, endian, ())?;
+        // let saved_position = reader.stream_position()?;
 
         // Read positions
-        reader.seek(SeekFrom::Start(
-            args.attr_offset[AttributeType::Position as usize] as u64,
-        ))?;
+        reader.seek(SeekFrom::Start(u64::from(
+            args.attr_offset[AttributeType::Position as usize],
+        )))?;
 
-        const PER_VERTEX_SIZE: u32 = 8;
         let vertex_count = args.attr_size[AttributeType::Position as usize] / PER_VERTEX_SIZE;
 
         let mut positions = vec![];
@@ -102,9 +101,8 @@ impl BinRead for ShapeData {
         }
 
         // Read indices
-        reader.seek(SeekFrom::Start(args.index_offset as u64))?;
+        reader.seek(SeekFrom::Start(u64::from(args.index_offset)))?;
 
-        const PER_INDEX_SIZE: u32 = 2;
         let index_count = args.index_size / PER_INDEX_SIZE;
 
         let mut indices = vec![];
@@ -115,14 +113,14 @@ impl BinRead for ShapeData {
 
         // Read normals
         let normals = if args.is_valid_attribute(AttributeType::Normal) {
-            reader.seek(SeekFrom::Start(
-                args.attr_offset[AttributeType::Normal as usize] as u64,
-            ))?;
+            reader.seek(SeekFrom::Start(u64::from(
+                args.attr_offset[AttributeType::Normal as usize],
+            )))?;
 
             let mut normals = vec![];
             for _vertex in 0..vertex_count {
                 let packed = <u32>::read_options(reader, endian, ())?;
-                normals.push(vec3_packed_snorm(packed));
+                normals.push(Vec3PackedSnorm(packed).unpack());
             }
 
             Some(normals)
@@ -132,9 +130,9 @@ impl BinRead for ShapeData {
 
         // Read UVs
         let uvs = if args.is_valid_attribute(AttributeType::Uv) {
-            reader.seek(SeekFrom::Start(
-                args.attr_offset[AttributeType::Uv as usize] as u64,
-            ))?;
+            reader.seek(SeekFrom::Start(u64::from(
+                args.attr_offset[AttributeType::Uv as usize],
+            )))?;
 
             let mut uvs = vec![];
             for _vertex in 0..vertex_count {
@@ -148,9 +146,9 @@ impl BinRead for ShapeData {
 
         // Read Params (Colors)
         let color_params = if args.is_valid_attribute(AttributeType::Param) {
-            reader.seek(SeekFrom::Start(
-                args.attr_offset[AttributeType::Param as usize] as u64,
-            ))?;
+            reader.seek(SeekFrom::Start(u64::from(
+                args.attr_offset[AttributeType::Param as usize],
+            )))?;
 
             let color_count = args.attr_size[AttributeType::Param as usize] / PER_VERTEX_SIZE;
 
@@ -209,6 +207,40 @@ pub struct ShapeElement {
     shape: ResourceShapeAttribute,
 }
 
+impl ShapeElement {
+    /// # Errors
+    /// Can error if:
+    /// - Shape data is in a malformed zlib format
+    /// - Writing out shape data file errors
+    /// - Parsing vertices and etc from data fails
+    pub fn shape_data(&mut self, file: &mut File) -> Result<ShapeData, Box<dyn Error>> {
+        // exporter set boundingbox
+
+        let shape_data = read_file_slice(
+            file,
+            self.common.offset.into(),
+            self.common.size.try_into()?,
+        )?;
+
+        let shape_data = inflate_bytes(&shape_data)?;
+
+        std::fs::write("./shape.dat", shape_data.clone())?;
+
+        let data =
+            ShapeData::read_options(&mut Cursor::new(shape_data), Endian::Little, self.shape)?;
+
+        Ok(data)
+    }
+
+    /// # Errors
+    /// Can error if:
+    /// - Shape data cannot be parsed
+    pub fn gltf(&mut self, file: &mut File) -> Result<GltfBuilder, Box<dyn Error>> {
+        let data = self.shape_data(file)?;
+
+        Ok(data.gltf(self.shape.bounding_box))
+    }
+}
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceShapeHairTransform {
     front_translate: [f32; 3],
@@ -226,6 +258,30 @@ pub struct ResourceShapeFacelineTransform {
     beard_translate: [f32; 3],
 }
 
+#[derive(Clone, Copy)]
+pub enum Shape {
+    Beard,
+    FaceLine,
+    Mask,
+    HatNormal,
+    HatCap,
+    ForeheadNormal,
+    ForeheadCap,
+    HairNormal,
+    HairCap,
+    Glasses,
+    Nose,
+    NoseLine,
+    HairTransform,
+    FaceLineTransform,
+}
+#[derive(Clone, Copy)]
+pub enum GenericResourceShape {
+    Element(ShapeElement),
+    HairTransform(ResourceShapeHairTransform),
+    FaceLineTransform(ResourceShapeFacelineTransform),
+}
+
 #[derive(BinRead, Debug, Clone, Copy)]
 #[br(little, magic = b"NFSR")]
 pub struct ResourceShape {
@@ -233,51 +289,48 @@ pub struct ResourceShape {
     file_size: u32,
     max_size: [u32; 12],
     max_alignment: [u32; 12],
-    beard: [ShapeElement; 4],
-    face_line: [ShapeElement; 12],
-    mask: [ShapeElement; 12],
-    hat_normal: [ShapeElement; 132],
-    hat_cap: [ShapeElement; 132],
-    forehead_normal: [ShapeElement; 132],
-    forehead_cap: [ShapeElement; 132],
+    pub beard: [ShapeElement; 4],
+    pub face_line: [ShapeElement; 12],
+    pub mask: [ShapeElement; 12],
+    pub hat_normal: [ShapeElement; 132],
+    pub hat_cap: [ShapeElement; 132],
+    pub forehead_normal: [ShapeElement; 132],
+    pub forehead_cap: [ShapeElement; 132],
     pub hair_normal: [ShapeElement; 132],
-    hair_cap: [ShapeElement; 132],
+    pub hair_cap: [ShapeElement; 132],
 
-    glasses: [ShapeElement; 1],
+    pub glasses: [ShapeElement; 1],
 
-    nose: [ShapeElement; 18],
-    nose_line: [ShapeElement; 18],
+    pub nose: [ShapeElement; 18],
+    pub nose_line: [ShapeElement; 18],
 
-    hair_transform: [ResourceShapeHairTransform; 132],
-    face_line_transform: [ResourceShapeFacelineTransform; 12],
+    pub hair_transform: [ResourceShapeHairTransform; 132],
+    pub face_line_transform: [ResourceShapeFacelineTransform; 12],
 }
-impl ShapeElement {
-    pub fn shape_data(&mut self, file: &mut File) -> Result<ShapeData, Box<dyn Error>> {
-        // exporter set boundingbox
 
-        let shape_data = read_file_slice(
-            file,
-            self.common.offset.into(),
-            self.common.size.try_into()?,
-        )?;
+impl ResourceShape {
+    #[allow(clippy::must_use_candidate)]
+    pub fn fetch_shape(&self, shape: Shape, index: usize) -> Option<GenericResourceShape> {
+        let shape_el = |x: &ShapeElement| GenericResourceShape::Element(*x);
+        let hair_t = |x: &ResourceShapeHairTransform| GenericResourceShape::HairTransform(*x);
+        let fl_t = |x: &ResourceShapeFacelineTransform| GenericResourceShape::FaceLineTransform(*x);
 
-        let shape_data = inflate_bytes(shape_data)?;
-
-        std::fs::write("./shape.dat", shape_data.clone()).unwrap();
-
-        let data =
-            ShapeData::read_options(&mut Cursor::new(shape_data), Endian::Little, self.shape)?;
-
-        Ok(data)
-    }
-
-    pub fn gltf(&mut self, file: &mut File) -> Result<GltfBuilder, Box<dyn Error>> {
-        let min = self.shape.bounding_box[0];
-        let max = self.shape.bounding_box[1];
-
-        let data = self.shape_data(file)?;
-
-        data.gltf(self.shape.bounding_box)
+        match shape {
+            Shape::Beard => self.beard.get(index).map(shape_el),
+            Shape::FaceLine => self.face_line.get(index).map(shape_el),
+            Shape::Mask => self.mask.get(index).map(shape_el),
+            Shape::HatNormal => self.hat_normal.get(index).map(shape_el),
+            Shape::HatCap => self.hat_cap.get(index).map(shape_el),
+            Shape::ForeheadNormal => self.forehead_normal.get(index).map(shape_el),
+            Shape::ForeheadCap => self.forehead_cap.get(index).map(shape_el),
+            Shape::HairNormal => self.hair_normal.get(index).map(shape_el),
+            Shape::HairCap => self.hair_cap.get(index).map(shape_el),
+            Shape::Glasses => self.glasses.get(index).map(shape_el),
+            Shape::Nose => self.nose.get(index).map(shape_el),
+            Shape::NoseLine => self.nose_line.get(index).map(shape_el),
+            Shape::HairTransform => self.hair_transform.get(index).map(hair_t),
+            Shape::FaceLineTransform => self.face_line_transform.get(index).map(fl_t),
+        }
     }
 }
 
@@ -291,17 +344,11 @@ impl ShapeElement {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{self, Read, Write};
+    use super::*;
+    use half::f16;
     use std::{error::Error, fs::File, io::BufReader};
 
     type R = Result<(), Box<dyn Error>>;
-    use flate2::read::ZlibDecoder;
-    use flate2::write::ZlibEncoder;
-    use flate2::{Compress, Compression, Decompress, FlushCompress, FlushDecompress};
-    use half::f16;
-    use utils::{decode_reader, read_file_slice};
-
-    use super::*;
 
     #[test]
     fn read() -> R {
@@ -329,23 +376,8 @@ mod tests {
     }
 
     #[test]
-    fn u16_to_f16_to_f32() -> R {
-        assert_eq!(1.0, f16::from_bits(15360).to_f32());
-
-        Ok(())
-    }
-
-    #[test]
-    fn inflate() -> R {
-        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-        e.write_all(b"Hello World").unwrap();
-        let bytes = e.finish().unwrap();
-
-        // Uncompresses a Zlib Encoded vector of bytes and returns a string or error
-        // Here &[u8] implements Read
-
-        assert_eq!(decode_reader(bytes).unwrap(), "Hello World");
-
-        Ok(())
+    fn u16_to_f16_to_f32() {
+        let within_tolerance = (1.0 - f16::from_bits(15360).to_f32()).abs() < 1.0;
+        assert!(within_tolerance);
     }
 }

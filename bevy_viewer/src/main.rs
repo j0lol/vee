@@ -1,23 +1,31 @@
 use bevy::{
-    asset::RenderAssetUsages,
-    input::mouse::AccumulatedMouseMotion,
-    pbr::PbrPlugin,
+    input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
     prelude::*,
-    render::mesh::{Indices, PrimitiveTopology},
     window::{CursorGrabMode, PrimaryWindow},
 };
 use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
-use binrw::{BinRead, io::BufReader};
-use std::fs::File;
-use std::{default, f32::consts::*};
-use vee::{ResourceShape, ShapeData};
+use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
+use load::shape_bundle;
+use std::f32::consts::*;
+use vee::{color::cafe::HAIR_COLOR, shape_load::nx::ResourceShape};
+
+mod load;
 
 #[derive(Resource, Default)]
 struct MiiDataRes(Option<ResourceShape>);
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 struct GuiData {
     selected_hair: u32,
+    selected_color: u32,
+}
+impl Default for GuiData {
+    fn default() -> Self {
+        GuiData {
+            selected_hair: 123,
+            selected_color: 1,
+        }
+    }
 }
 
 fn main() {
@@ -25,73 +33,57 @@ fn main() {
         .init_resource::<CameraSettings>()
         .init_resource::<MiiDataRes>()
         .init_resource::<GuiData>()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, EguiBlockingPlugin))
         .add_systems(Startup, (setup, cursor_grab).chain())
-        .add_systems(Update, (orbit, cursor_ungrab))
-        // .add_plugins(EguiPlugin {
-        //     enable_multipass_for_primary_context: true,
-        // })
-        // .add_systems(EguiContextPass, ui_example_system)
+        .add_systems(Update, (cursor_ungrab, orbit))
+        .add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        })
+        .add_systems(EguiContextPass, ui_example_system)
         .run();
 }
 
-fn shape_data_to_mesh(data: ShapeData) -> Mesh {
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
-    )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, data.positions)
-    .with_inserted_indices(Indices::U16(data.indices))
-}
-fn load_mesh(res: ResourceShape, hair_num: usize) -> Result<Mesh> {
-    let mut shape = res.hair_normal[hair_num];
-    let mut file = File::open("ShapeMid.dat")?;
-    let mesh = shape.shape_data(&mut file).unwrap();
-
-    // let gltf = shape.gltf(&mut file).unwrap();
-    // gltf.export_glb("assets/model.glb")?;
-
-    Ok(shape_data_to_mesh(mesh))
-}
-
-fn get_res() -> Result<ResourceShape> {
-    let mut bin = BufReader::new(File::open("ShapeMid.dat")?);
-    Ok(ResourceShape::read(&mut bin)?)
-}
 fn ui_example_system(
     mut contexts: EguiContexts,
     res: Res<MiiDataRes>,
     mut gui_data: ResMut<GuiData>,
-    mut mii: Single<(&Mesh3d, &MeshMaterial3d<StandardMaterial>, Entity), With<MiiMesh>>,
+    mii: Single<Entity, With<MiiMesh>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     mut commands: Commands,
 ) -> Result<()> {
-    let res = res.0.unwrap_or(get_res()?);
+    let res = res.0.unwrap_or(load::get_res()?);
 
-    egui::Window::new("Hello").show(contexts.ctx_mut(), |ui| {
+    egui::Window::new("Model Loader").show(contexts.ctx_mut(), |ui| {
+        ui.label("Hair Index");
         ui.add(
             egui::DragValue::new(&mut gui_data.selected_hair)
                 .speed(0.1)
                 .range(0..=res.hair_normal.len() - 1),
         );
+        ui.label("Hair Index");
+        ui.add(
+            egui::DragValue::new(&mut gui_data.selected_color)
+                .speed(0.1)
+                .range(0..=HAIR_COLOR.len() - 1),
+        );
 
         if ui.button("Load hair model".to_string()).clicked() {
-            // mesh.0. ;
-            meshes
-                .get_mut(mii.0.id())
-                .replace(&mut load_mesh(res, gui_data.selected_hair as usize).unwrap());
-
-            commands.spawn((
-                Mesh3d(mii.0.0.clone()),
-                MeshMaterial3d(mii.1.0.clone()),
-                Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.1)),
+            commands.entity(mii.entity()).remove::<(
+                Mesh3d,
+                MeshMaterial3d<StandardMaterial>,
+                Transform,
                 MiiMesh,
+            )>();
+
+            commands.spawn(load::shape_bundle(
+                &mut materials,
+                &mut meshes,
+                &res,
+                gui_data.selected_hair as usize,
+                gui_data.selected_color as usize,
             ));
-            commands
-                .entity(mii.2)
-                .remove::<(Mesh3d, MeshMaterial3d<StandardMaterial>, Transform, MiiMesh)>();
         }
-        //
     });
 
     Ok(())
@@ -102,42 +94,48 @@ struct MiiMesh;
 
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut res: ResMut<MiiDataRes>,
 ) -> Result<()> {
-    res.0 = Some(get_res()?);
+    res.0 = Some(load::get_res()?);
 
     // Create and save a handle to the mesh.
-    let cube_mesh_handle: Handle<Mesh> = meshes.add(load_mesh(res.0.unwrap(), 123)?);
-
     // Render the mesh with the custom texture, and add the marker.
-    commands.spawn((
-        Mesh3d(cube_mesh_handle),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.118, 0.102, 0.094),
-            ..default()
-        })),
-        Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.1)),
-        MiiMesh,
+    commands.spawn(shape_bundle(
+        &mut materials,
+        &mut meshes,
+        &res.0.unwrap(),
+        123,
+        1,
     ));
 
     // Transform for the camera and lighting, looking at (0,0,0) (the position of the mesh).
     commands.spawn((
         Name::new("Camera"),
         Camera3d::default(),
+        AmbientLight {
+            brightness: 160.0,
+            ..default()
+        },
         Transform::from_xyz(50.0, 50.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
-        // AmbientLight::default(),
     ));
     commands.spawn((
         Name::new("Light"),
         PointLight {
-            intensity: 1000.0,
-            color: Color::srgb(1.0, 1.0, 0.7),
+            shadows_enabled: true,
+            intensity: 10_000_000.0,
             ..default()
         },
-        Transform::from_xyz(3.0, 80.0, 5.0),
+        Transform::from_xyz(0.0, 10.0, 5.0),
+    ));
+
+    // circular base
+    commands.spawn((
+        Mesh3d(meshes.add(Circle::new(12.0))),
+        MeshMaterial3d(materials.add(Color::WHITE)),
+        Transform::from_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+            .with_translation(vec3(0., -2., 0.)),
     ));
 
     commands.spawn((
@@ -145,11 +143,13 @@ fn setup(
         Text::new(
             "Mouse up or down: pitch\n\
             Mouse left or right: yaw\n\
-            Mouse buttons: roll",
+            Scroll: Zoom in/out\n\
+            Escape: use UI\n\
+            Click: control camera",
         ),
         Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(12.),
+            bottom: Val::Px(12.),
             left: Val::Px(12.),
             ..default()
         },
@@ -158,11 +158,6 @@ fn setup(
 }
 
 fn cursor_grab(mut primary_window: Single<&mut Window, With<PrimaryWindow>>) {
-    // if you want to use the cursor, but not let it leave the window,
-    // use `Confined` mode:
-
-    primary_window.cursor_options.grab_mode = CursorGrabMode::Confined;
-
     // for a game that doesn't use the cursor (like a shooter):
     // use `Locked` mode to keep the cursor in one place
     primary_window.cursor_options.grab_mode = CursorGrabMode::Locked;
@@ -173,11 +168,27 @@ fn cursor_grab(mut primary_window: Single<&mut Window, With<PrimaryWindow>>) {
 
 fn cursor_ungrab(
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    egui_block_input_state: Res<EguiBlockInputState>,
     mut primary_window: Single<&mut Window, With<PrimaryWindow>>,
 ) {
-    if keyboard_input.pressed(KeyCode::Escape) {
-        primary_window.cursor_options.grab_mode = CursorGrabMode::None;
-        primary_window.cursor_options.visible = true;
+    match primary_window.cursor_options.grab_mode {
+        CursorGrabMode::None => {
+            if egui_block_input_state.wants_pointer_input {
+                return;
+            }
+
+            if mouse_buttons.pressed(MouseButton::Left) {
+                primary_window.cursor_options.grab_mode = CursorGrabMode::Locked;
+                primary_window.cursor_options.visible = false;
+            }
+        }
+        CursorGrabMode::Confined | CursorGrabMode::Locked => {
+            if keyboard_input.pressed(KeyCode::Escape) {
+                primary_window.cursor_options.grab_mode = CursorGrabMode::None;
+                primary_window.cursor_options.visible = true;
+            }
+        }
     }
 }
 #[derive(Debug, Resource)]
@@ -207,20 +218,19 @@ impl Default for CameraSettings {
 }
 fn orbit(
     mut camera: Single<&mut Transform, With<Camera>>,
-    camera_settings: Res<CameraSettings>,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut camera_settings: ResMut<CameraSettings>,
     mouse_motion: Res<AccumulatedMouseMotion>,
+    scroll_motion: Res<AccumulatedMouseScroll>,
     time: Res<Time>,
+    primary_window: Single<&mut Window, With<PrimaryWindow>>,
 ) {
+    if primary_window.cursor_options.grab_mode == CursorGrabMode::None {
+        return;
+    }
     let delta = mouse_motion.delta;
     let mut delta_roll = 0.0;
 
-    if mouse_buttons.pressed(MouseButton::Left) {
-        delta_roll -= 1.0;
-    }
-    if mouse_buttons.pressed(MouseButton::Right) {
-        delta_roll += 1.0;
-    }
+    camera_settings.orbit_distance += scroll_motion.delta.y;
 
     // Mouse motion is one of the few inputs that should not be multiplied by delta time,
     // as we are already receiving the full movement since the last frame was rendered. Multiplying
@@ -247,4 +257,30 @@ fn orbit(
     // In our example it's a static target, but this could easily be customized.
     let target = Vec3::ZERO;
     camera.translation = target - camera.forward() * camera_settings.orbit_distance;
+}
+
+mod egui_blocking_plugin {
+    use bevy::prelude::*;
+    use bevy_egui::EguiContexts;
+
+    pub struct EguiBlockingPlugin;
+
+    #[derive(Default, Resource)]
+    pub struct EguiBlockInputState {
+        pub wants_keyboard_input: bool,
+        pub wants_pointer_input: bool,
+    }
+
+    impl Plugin for EguiBlockingPlugin {
+        fn build(&self, app: &mut App) {
+            app.init_resource::<EguiBlockInputState>()
+                .add_systems(PostUpdate, egui_wants_input);
+        }
+    }
+
+    fn egui_wants_input(mut state: ResMut<EguiBlockInputState>, mut contexts: EguiContexts) {
+        let ctx = contexts.ctx_mut();
+        state.wants_keyboard_input = ctx.wants_keyboard_input();
+        state.wants_pointer_input = ctx.wants_pointer_input();
+    }
 }
