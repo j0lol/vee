@@ -1,11 +1,12 @@
-use crate::utils::{Vec3PackedSnorm, inflate_bytes, read_file_slice, u16_to_f32};
+use crate::utils::{ReadSeek, Vec3PackedSnorm, inflate_bytes, read_byte_slice, u16_to_f32};
 use binrw::{BinRead, Endian};
-use mesh_tools::GltfBuilder;
 use std::{
     error::Error,
-    fs::File,
     io::{Cursor, Read, Seek, SeekFrom},
 };
+
+#[cfg(feature = "gltf")]
+use mesh_tools::GltfBuilder;
 
 enum AttributeType {
     /// Vertex positions. Format: `AttributeFormat_16_16_16_16_Float`
@@ -25,6 +26,7 @@ pub struct ShapeData {
     pub color_params: Option<Vec<u8>>,
 }
 impl ShapeData {
+    #[cfg(feature = "gltf")]
     fn gltf(&self, _bounding_box: [[f32; 3]; 2]) -> GltfBuilder {
         let mut builder = GltfBuilder::new();
 
@@ -213,10 +215,10 @@ impl ShapeElement {
     /// - Shape data is in a malformed zlib format
     /// - Writing out shape data file errors
     /// - Parsing vertices and etc from data fails
-    pub fn shape_data(&mut self, file: &mut File) -> Result<ShapeData, Box<dyn Error>> {
+    pub fn shape_data(&mut self, file: &mut dyn ReadSeek) -> Result<ShapeData, Box<dyn Error>> {
         // exporter set boundingbox
 
-        let shape_data = read_file_slice(
+        let shape_data = read_byte_slice(
             file,
             self.common.offset.into(),
             self.common.size.try_into()?,
@@ -235,12 +237,14 @@ impl ShapeElement {
     /// # Errors
     /// Can error if:
     /// - Shape data cannot be parsed
+    #[cfg(feature = "gltf")]
     pub fn gltf(&mut self, file: &mut File) -> Result<GltfBuilder, Box<dyn Error>> {
         let data = self.shape_data(file)?;
 
         Ok(data.gltf(self.shape.bounding_box))
     }
 }
+
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceShapeHairTransform {
     front_translate: [f32; 3],
@@ -334,14 +338,6 @@ impl ResourceShape {
     }
 }
 
-// impl ResourceShape {
-//     pub fn decompress_resource(&self, data: &[u8]) {}
-//     // pub fn gltf(self) {
-//     //     todo!();
-//     //     // let min = self.
-//     // }
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -360,6 +356,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "gltf")]
     fn jas() -> R {
         let mut bin = BufReader::new(File::open("ShapeMid.dat")?);
 

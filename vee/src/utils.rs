@@ -1,10 +1,8 @@
+use flate2::read::ZlibDecoder;
 use std::{
     error::Error,
-    fs::File,
-    io::{self, Read, Seek, SeekFrom},
+    io::{self, Read, SeekFrom},
 };
-
-use flate2::read::ZlibDecoder;
 
 pub fn u16_to_f32(num: u16) -> f32 {
     half::f16::from_bits(num).to_f32()
@@ -28,8 +26,12 @@ impl Vec3PackedSnorm {
     }
 }
 
-pub(crate) fn read_file_slice(
-    file: &mut File,
+/// Abstraction over anything that can be read as Seek or Read
+pub trait ReadSeek: std::io::Seek + std::io::Read {}
+impl<T: ?Sized> ReadSeek for T where T: std::io::Seek + std::io::Read {}
+
+pub(crate) fn read_byte_slice(
+    file: &mut dyn ReadSeek, // Dynamic param: Anything that impl's Read + Seek
     start: u64,
     count: usize,
 ) -> Result<Vec<u8>, Box<dyn Error>> {
