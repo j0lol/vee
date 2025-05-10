@@ -1,8 +1,8 @@
 use binrw::{NullWideString, binrw};
+
 #[derive(Debug)]
 #[binrw]
 #[brw(little)]
-
 pub struct UuidVer4 {
     idc: [u8; 16],
 }

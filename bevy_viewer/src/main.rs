@@ -1,13 +1,20 @@
 use bevy::{
+    asset::RenderAssetUsages,
     input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
     prelude::*,
+    render::render_resource::{Extent3d, TextureFormat},
     window::{CursorGrabMode, PrimaryWindow},
 };
 use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
+use binrw::BinRead;
 use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
 use load::shape_bundle;
-use std::f32::consts::*;
-use vee::{color::cafe::HAIR_COLOR, shape_load::nx::ResourceShape};
+use std::{f32::consts::*, fs::File, io::BufReader};
+use vee::{
+    color::cafe::HAIR_COLOR,
+    shape_load::nx::ResourceShape,
+    tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
+};
 
 mod load;
 
@@ -99,6 +106,29 @@ fn setup(
     mut res: ResMut<MiiDataRes>,
 ) -> Result<()> {
     res.0 = Some(load::get_res()?);
+
+    // let image = {
+    //     //
+    //     let mut bin = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
+
+    //     let res = ResourceTexture::read(&mut bin)?;
+
+    //     let tex = res.eye[0]
+    //         .get_texture(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))
+    //         .unwrap();
+
+    //     Image::new(
+    //         Extent3d {
+    //             width: res.eye[0].texture.width.into(),
+    //             height: res.eye[0].texture.height.into(),
+    //             depth_or_array_layers: 1,
+    //         },
+    //         bevy::render::render_resource::TextureDimension::D2,
+    //         tex,
+    //         TextureFormat::Bc7RgbaUnormSrgb,
+    //         RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+    //     )
+    // };
 
     // Create and save a handle to the mesh.
     // Render the mesh with the custom texture, and add the marker.

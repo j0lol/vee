@@ -185,11 +185,11 @@ impl BinRead for ShapeData {
 }
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceCommonAttribute {
-    offset: u32,
-    size: u32,
-    size_compressed: u32,
-    compression_level: u8,
-    memory_level: u8,
+    pub(crate) offset: u32,
+    pub(crate) size: u32,
+    pub(crate) size_compressed: u32,
+    pub(crate) compression_level: u8,
+    pub(crate) memory_level: u8,
     pad: u16,
 }
 #[derive(BinRead, Default, Debug, Clone, Copy)]
