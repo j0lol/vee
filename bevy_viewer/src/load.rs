@@ -5,10 +5,10 @@ use bevy::{
     render::mesh::{Indices, PrimitiveTopology},
 };
 use binrw::{BinRead, io::BufReader};
-use std::{fs::File, io::Cursor};
+use std::fs::File;
 use vee::{
     color::cafe::HAIR_COLOR,
-    shape_load::nx::{GenericResourceShape, ResourceShape, Shape, ShapeData},
+    shape_load::nx::{GenericResourceShape, ResourceShape, SHAPE_MID_DAT, Shape, ShapeData},
 };
 
 fn shape_data_to_mesh(data: ShapeData) -> Mesh {
@@ -25,11 +25,15 @@ pub fn load_mesh(res: ResourceShape, shape: Shape, hair_num: usize) -> Result<Me
         panic!("wah")
     };
 
-    let mesh = if cfg!(target_family = "wasm") {
-        let mut file = Cursor::new(include_bytes!("../../ShapeMid.dat"));
+    #[cfg(target_family = "wasm")]
+    let mesh = {
+        use vee::shape_load::nx::SHAPE_MID_DAT_LOADED;
+        let mut file = Cursor::new(SHAPE_MID_DAT_LOADED);
         shape.shape_data(&mut file).unwrap()
-    } else {
-        let mut file = File::open("ShapeMid.dat")?;
+    };
+    #[cfg(not(target_family = "wasm"))]
+    let mesh = {
+        let mut file = File::open(SHAPE_MID_DAT)?;
         shape.shape_data(&mut file).unwrap()
     };
 
@@ -37,11 +41,15 @@ pub fn load_mesh(res: ResourceShape, shape: Shape, hair_num: usize) -> Result<Me
 }
 
 pub fn get_res() -> Result<ResourceShape> {
-    if cfg!(target_family = "wasm") {
-        let mut bin = BufReader::new(Cursor::new(include_bytes!("../../ShapeMid.dat")));
+    #[cfg(target_family = "wasm")]
+    {
+        use vee::shape_load::nx::SHAPE_MID_DAT_LOADED;
+        let mut bin = BufReader::new(Cursor::new(SHAPE_MID_DAT_LOADED));
         Ok(ResourceShape::read(&mut bin)?)
-    } else {
-        let mut bin = BufReader::new(File::open("ShapeMid.dat")?);
+    }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);
         Ok(ResourceShape::read(&mut bin)?)
     }
 }

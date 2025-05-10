@@ -5,6 +5,10 @@ use std::{
     io::{Cursor, Read, Seek, SeekFrom},
 };
 
+pub const SHAPE_MID_DAT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/ShapeMid.dat");
+#[cfg(target_family = "wasm")]
+pub const SHAPE_MID_DAT_LOADED: &[u8] = include_bytes!("../../../ShapeMid.dat");
+
 #[cfg(feature = "gltf")]
 use mesh_tools::GltfBuilder;
 
@@ -350,7 +354,7 @@ mod tests {
 
     #[test]
     fn read() -> R {
-        let mut bin = BufReader::new(File::open("ShapeMid.dat")?);
+        let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);
 
         let _ = ResourceShape::read(&mut bin)?;
 
@@ -360,13 +364,13 @@ mod tests {
     #[test]
     #[cfg(feature = "gltf")]
     fn jas() -> R {
-        let mut bin = BufReader::new(File::open("ShapeMid.dat")?);
+        let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);
 
         let res = ResourceShape::read(&mut bin)?;
 
         let mut shape = res.hair_normal[123];
 
-        let mut file = File::open("ShapeMid.dat")?;
+        let mut file = File::open(SHAPE_MID_DAT)?;
 
         let gltf = shape.gltf(&mut file)?;
         gltf.export_glb("jas.glb")?;
