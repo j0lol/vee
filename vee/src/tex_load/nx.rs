@@ -9,7 +9,7 @@ use image::{ImageBuffer, Rgba, RgbaImage};
 
 pub const TEXTURE_MID_SRGB_DAT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/NXTextureMidSRGB.dat");
 
-#[derive(BinRead, Debug)]
+#[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceTextureAttribute {
     alignment: u32,
     pub width: u16,
@@ -20,7 +20,7 @@ pub struct ResourceTextureAttribute {
     pad: [u8; 1],
 }
 
-#[derive(BinRead, Debug)]
+#[derive(BinRead, Debug, Clone, Copy)]
 pub struct TextureElement {
     pub common: ResourceCommonAttribute,
     pub texture: ResourceTextureAttribute,
@@ -28,15 +28,17 @@ pub struct TextureElement {
 use strum_macros::FromRepr;
 use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
+// Format rundown:
+// https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/#comparison-table
 #[derive(FromRepr, Debug)]
 enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
     Rb = 1,      // R8B8Unorm
     Rgba = 2,    // R8B8G8A8Unorm
-    Bc4 = 3,     // Bc4Unorm
-    Bc5 = 4,     // Bc5Unorm
-    Bc7 = 5,     // Bc7Unorm
-    Astc4x4 = 6, // Astc4x4Unorm
+    Bc4 = 3,     // Bc4Unorm (Compressed R)
+    Bc5 = 4,     // Bc5Unorm (Compressed Rb)
+    Bc7 = 5,     // Bc7Unorm (Compressed Rgba)
+    Astc4x4 = 6, // Astc4x4Unorm (Compressed Rgba)
 }
 
 impl TextureElement {
@@ -57,8 +59,8 @@ impl TextureElement {
                     ResourceTextureFormat::R
                     | ResourceTextureFormat::Rb
                     | ResourceTextureFormat::Rgba => 1,
-                    ResourceTextureFormat::Bc4 => unimplemented!(),
-                    ResourceTextureFormat::Bc5
+                    ResourceTextureFormat::Bc4
+                    | ResourceTextureFormat::Bc5
                     | ResourceTextureFormat::Bc7
                     | ResourceTextureFormat::Astc4x4 => 4,
                 };
@@ -77,6 +79,7 @@ impl TextureElement {
             let height = self.texture.height.into();
             let block_height = block_height_mip0(div_round_up(height, block_size));
 
+            // panic!("{}", tex_data.len());
             deswizzle_block_linear(
                 div_round_up(self.texture.width.into(), block_size),
                 div_round_up(self.texture.height.into(), block_size),
@@ -92,7 +95,14 @@ impl TextureElement {
         Ok(tex_data)
     }
 
-    pub fn get_texture(&self, file: &mut dyn ReadSeek) -> Result<RgbaImage, Box<dyn Error>> {
+    pub fn get_texture(
+        &self,
+        file: &mut dyn ReadSeek,
+    ) -> Result<Option<RgbaImage>, Box<dyn Error>> {
+        if self.texture.width == 0 || self.texture.height == 0 {
+            return Ok(None);
+        }
+
         let tex_data = self.get_texture_bytes(file)?;
         assert!(!tex_data.is_empty());
 
@@ -114,6 +124,16 @@ impl TextureElement {
                     self.texture.height.into(),
                     &mut tex_data_decoded,
                 )?;
+
+                // Convert R to Rgba
+                tex_data_decoded = tex_data_decoded
+                    .iter()
+                    .map(|x| {
+                        let [_, _, w, _] = x.to_le_bytes();
+
+                        u32::from_le_bytes([w, w, w, w])
+                    })
+                    .collect();
             }
             ResourceTextureFormat::Bc5 => {
                 texture2ddecoder::decode_bc5(
@@ -122,6 +142,16 @@ impl TextureElement {
                     self.texture.height.into(),
                     &mut tex_data_decoded,
                 )?;
+
+                // Convert Rb to Rgba
+                tex_data_decoded = tex_data_decoded
+                    .iter()
+                    .map(|x| {
+                        let [w, a, _, _] = x.to_le_bytes();
+
+                        u32::from_le_bytes([w, w, w, a])
+                    })
+                    .collect();
             }
             ResourceTextureFormat::R => {
                 tex_data_decoded = tex_data
@@ -156,11 +186,11 @@ impl TextureElement {
         )
         .unwrap();
 
-        Ok(img)
+        Ok(Some(img))
     }
 }
 
-#[derive(BinRead)]
+#[derive(BinRead, Clone, Copy)]
 #[br(little, magic = b"NFTR")]
 pub struct ResourceTexture {
     ver: u32,
@@ -182,6 +212,8 @@ pub struct ResourceTexture {
 
 #[cfg(test)]
 mod tests {
+    use tegra_swizzle::swizzle::{deswizzled_mip_size, swizzled_mip_size};
+
     use super::*;
     use std::{error::Error, fs::File, io::BufReader};
 
@@ -202,10 +234,13 @@ mod tests {
 
         let res = ResourceTexture::read(&mut bin)?;
 
-        let tex =
-            res.moustache[1].get_texture(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
-        tex.save("./eye.png")?;
+        let res = res.eye[0];
 
+        let tex = res.get_texture(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
+
+        if let Some(tex) = tex {
+            tex.save("./tex.png")?;
+        }
         Ok(())
     }
 }
