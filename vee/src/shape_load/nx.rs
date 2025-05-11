@@ -1,5 +1,6 @@
 use crate::utils::{ReadSeek, Vec3PackedSnorm, inflate_bytes, read_byte_slice, u16_to_f32};
 use binrw::{BinRead, Endian};
+use std::fs::File;
 use std::{
     error::Error,
     io::{Cursor, Read, Seek, SeekFrom},
@@ -194,11 +195,11 @@ pub struct ResourceCommonAttribute {
 }
 #[derive(BinRead, Default, Debug, Clone, Copy)]
 pub struct ResourceShapeAttribute {
-    attr_offset: [u32; 5],
-    attr_size: [u32; 5],
-    index_offset: u32,
-    index_size: u32,
-    bounding_box: [[f32; 3]; 2],
+    pub attr_offset: [u32; 5],
+    pub attr_size: [u32; 5],
+    pub index_offset: u32,
+    pub index_size: u32,
+    pub bounding_box: [[f32; 3]; 2],
 }
 impl ResourceShapeAttribute {
     fn is_valid_attribute(&self, attr_type: AttributeType) -> bool {
@@ -209,8 +210,8 @@ impl ResourceShapeAttribute {
 
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ShapeElement {
-    common: ResourceCommonAttribute,
-    shape: ResourceShapeAttribute,
+    pub common: ResourceCommonAttribute,
+    pub shape: ResourceShapeAttribute,
 }
 
 impl ShapeElement {

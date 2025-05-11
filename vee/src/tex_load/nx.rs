@@ -95,10 +95,10 @@ impl TextureElement {
         Ok(tex_data)
     }
 
-    pub fn get_texture(
+    pub fn get_uncompressed_bytes(
         &self,
         file: &mut dyn ReadSeek,
-    ) -> Result<Option<RgbaImage>, Box<dyn Error>> {
+    ) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
         if self.texture.width == 0 || self.texture.height == 0 {
             return Ok(None);
         }
@@ -179,10 +179,19 @@ impl TextureElement {
             })
             .collect();
 
+        Ok(Some(tex_data_decoded))
+    }
+    pub fn get_image(&self, file: &mut dyn ReadSeek) -> Result<Option<RgbaImage>, Box<dyn Error>> {
+        let bytes = match self.get_uncompressed_bytes(file) {
+            Ok(Some(bytes)) => bytes,
+            Ok(None) => return Ok(None),
+            Err(e) => return Err(e),
+        };
+
         let img: ImageBuffer<Rgba<u8>, Vec<u8>> = image::RgbaImage::from_raw(
             self.texture.width.into(),
             self.texture.height.into(),
-            tex_data_decoded,
+            bytes,
         )
         .unwrap();
 
@@ -206,14 +215,12 @@ pub struct ResourceTexture {
     pub glass: [TextureElement; 20],
     pub mole: [TextureElement; 2],
     pub mouth: [TextureElement; 37],
-    pub moustache: [TextureElement; 6],
+    pub mustache: [TextureElement; 6],
     pub noseline: [TextureElement; 18],
 }
 
 #[cfg(test)]
 mod tests {
-    use tegra_swizzle::swizzle::{deswizzled_mip_size, swizzled_mip_size};
-
     use super::*;
     use std::{error::Error, fs::File, io::BufReader};
 
@@ -236,7 +243,7 @@ mod tests {
 
         let res = res.eye[0];
 
-        let tex = res.get_texture(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
+        let tex = res.get_image(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
 
         if let Some(tex) = tex {
             tex.save("./tex.png")?;

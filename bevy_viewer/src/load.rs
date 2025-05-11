@@ -1,10 +1,15 @@
-use crate::MiiMesh;
+use crate::{GuiData, MiiDataRes, MiiMesh};
 use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
-    render::mesh::{Indices, PrimitiveTopology},
+    render::{
+        mesh::{Indices, PrimitiveTopology},
+        render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
+        view::RenderLayers,
+    },
 };
 use binrw::{BinRead, io::BufReader};
+use image::{DynamicImage, ImageBuffer, RgbaImage};
 use std::fs::File;
 use vee::{
     color::cafe::HAIR_COLOR,
@@ -12,13 +17,19 @@ use vee::{
 };
 
 fn shape_data_to_mesh(data: ShapeData) -> Mesh {
-    Mesh::new(
+    let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, data.positions)
     .with_inserted_indices(Indices::U16(data.indices))
-    .with_computed_normals()
+    .with_computed_normals();
+
+    if let Some(uvs) = data.uvs {
+        mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    }
+
+    mesh
 }
 pub fn load_mesh(res: ResourceShape, shape: Shape, hair_num: usize) -> Result<Mesh> {
     let GenericResourceShape::Element(mut shape) = res.fetch_shape(shape, hair_num).unwrap() else {
@@ -60,13 +71,25 @@ pub fn shape_bundle(
     res: &ResourceShape,
     hair_num: usize,
     color_num: usize,
+    shape: Shape,
 ) -> impl Bundle {
     let [r, g, b, _a] = HAIR_COLOR[color_num];
 
     (
-        Mesh3d(meshes.add(load_mesh(*res, Shape::HairNormal, hair_num).unwrap())),
+        Mesh3d(meshes.add(load_mesh(*res, shape, hair_num).unwrap())),
         MeshMaterial3d(materials.add(Color::srgb_from_array([r, g, b]))),
         Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.05)),
         MiiMesh,
     )
+}
+
+pub fn setup_image(images: &mut ResMut<Assets<Image>>, image: RgbaImage) -> Handle<Image> {
+    let dynamic_image = DynamicImage::ImageRgba8(image);
+
+    // Now add it to Bevy!
+    images.add(Image::from_dynamic(
+        dynamic_image,
+        true,
+        RenderAssetUsages::all(),
+    ))
 }

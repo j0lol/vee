@@ -6,5 +6,6 @@ edition = "2024"
 [dependencies]
 vee = { path = "../vee" }
 bevy_egui = "0.34.1"
-bevy = "0.16.0"
+bevy = { version = "0.16.0", features = ["bevy_picking", "bevy_dev_tools"] }
 binrw = "0.15.0"
+image = "0.25.6"

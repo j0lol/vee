@@ -1,22 +1,32 @@
 use bevy::{
     asset::RenderAssetUsages,
+    dev_tools::picking_debug::{DebugPickingMode, DebugPickingPlugin},
+    image::ImageType,
     input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
     prelude::*,
-    render::render_resource::{Extent3d, TextureFormat},
+    render::{
+        render_resource::{Extent3d, Texture, TextureDimension, TextureFormat, TextureUsages},
+        view::RenderLayers,
+    },
     window::{CursorGrabMode, PrimaryWindow},
 };
 use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
 use binrw::BinRead;
 use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
-use load::shape_bundle;
+use load::{load_mesh, setup_image, shape_bundle};
 use std::{f32::consts::*, fs::File, io::BufReader};
 use vee::{
+    charinfo::nx::NxCharInfo,
     color::cafe::HAIR_COLOR,
-    shape_load::nx::ResourceShape,
+    mask::FaceParts,
+    shape_load::nx::{ResourceShape, Shape},
     tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
 };
 
 mod load;
+
+#[derive(Component)]
+struct MainPassCamera;
 
 #[derive(Resource, Default)]
 struct MiiDataRes(Option<ResourceShape>);
@@ -40,8 +50,11 @@ fn main() {
         .init_resource::<CameraSettings>()
         .init_resource::<MiiDataRes>()
         .init_resource::<GuiData>()
+        .add_plugins((MeshPickingPlugin, DebugPickingPlugin))
+        .insert_resource(DebugPickingMode::Normal)
         .add_plugins((DefaultPlugins, EguiBlockingPlugin))
-        .add_systems(Startup, (setup, cursor_grab).chain())
+        .add_systems(Startup, (setup, setup_rendtotexexample).chain())
+        .add_systems(Update, (cube_rotator_system, rotator_system))
         .add_systems(Update, (cursor_ungrab, orbit))
         .add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
@@ -89,6 +102,7 @@ fn ui_example_system(
                 &res,
                 gui_data.selected_hair as usize,
                 gui_data.selected_color as usize,
+                Shape::HairNormal,
             ));
         }
     });
@@ -103,9 +117,14 @@ fn setup(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut images: ResMut<Assets<Image>>,
     mut res: ResMut<MiiDataRes>,
 ) -> Result<()> {
     res.0 = Some(load::get_res()?);
+
+    let mut mii = File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../j0.charinfo")).unwrap();
+
+    let mii = NxCharInfo::read(&mut mii).unwrap();
 
     // let image = {
     //     //
@@ -130,14 +149,32 @@ fn setup(
     //     )
     // };
 
+    // commands.spawn(shape_bundle(
+    //     &mut materials,
+    //     &mut meshes,
+    //     &res.0.unwrap(),
+    //     1,
+    //     4,
+    //     Shape::Mask,
+    // ));
+    commands.spawn(shape_bundle(
+        &mut materials,
+        &mut meshes,
+        &res.0.unwrap(),
+        1,
+        4,
+        Shape::FaceLine,
+    ));
+
     // Create and save a handle to the mesh.
     // Render the mesh with the custom texture, and add the marker.
     commands.spawn(shape_bundle(
         &mut materials,
         &mut meshes,
         &res.0.unwrap(),
-        123,
-        1,
+        mii.hair_type as usize,
+        mii.hair_color as usize,
+        Shape::HairNormal,
     ));
 
     // Transform for the camera and lighting, looking at (0,0,0) (the position of the mesh).
@@ -149,15 +186,16 @@ fn setup(
             ..default()
         },
         Transform::from_xyz(50.0, 50.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        MainPassCamera,
     ));
     commands.spawn((
         Name::new("Light"),
         PointLight {
-            shadows_enabled: true,
-            intensity: 10_000_000.0,
+            shadows_enabled: false,
+            intensity: 3_000_000.0,
             ..default()
         },
-        Transform::from_xyz(0.0, 10.0, 5.0),
+        Transform::from_xyz(0.0, 0.0, 8.0),
     ));
 
     // circular base
@@ -247,7 +285,7 @@ impl Default for CameraSettings {
     }
 }
 fn orbit(
-    mut camera: Single<&mut Transform, With<Camera>>,
+    mut camera: Single<&mut Transform, With<MainPassCamera>>,
     mut camera_settings: ResMut<CameraSettings>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     scroll_motion: Res<AccumulatedMouseScroll>,
@@ -261,6 +299,7 @@ fn orbit(
     let mut delta_roll = 0.0;
 
     camera_settings.orbit_distance += scroll_motion.delta.y;
+    camera_settings.orbit_distance = camera_settings.orbit_distance.clamp(1.0, 1000.0);
 
     // Mouse motion is one of the few inputs that should not be multiplied by delta time,
     // as we are already receiving the full movement since the last frame was rendered. Multiplying
@@ -312,5 +351,234 @@ mod egui_blocking_plugin {
         let ctx = contexts.ctx_mut();
         state.wants_keyboard_input = ctx.wants_keyboard_input();
         state.wants_pointer_input = ctx.wants_pointer_input();
+    }
+}
+
+// Marks the first pass cube (rendered to a texture.)
+#[derive(Component)]
+struct FirstPassCube;
+
+// Marks the main pass cube, to which the texture is applied.
+#[derive(Component)]
+struct MainPassCube;
+
+fn draw_mii_mask(
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    images: &mut ResMut<Assets<Image>>,
+    commands: &mut Commands,
+    render_layer: RenderLayers,
+) {
+    let mut mii = File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../j0.charinfo")).unwrap();
+
+    let mii = NxCharInfo::read(&mut mii).unwrap();
+
+    let mask_info = FaceParts::init(&mii, 256.0);
+
+    let eye_pos = mask_info.eye[0];
+
+    let mut bin = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT).unwrap());
+
+    let vee_textures = ResourceTexture::read(&mut bin).unwrap();
+
+    let tex = vee_textures.eye[mii.eye_type as usize];
+
+    let quad_handle = meshes.add(Rectangle::new(
+        f32::from(tex.texture.width) / 256.0 * 2.,
+        f32::from(tex.texture.height) / 256.0 * 2.,
+    ));
+
+    let tex = tex
+        .get_image(&mut BufReader::new(
+            File::open(TEXTURE_MID_SRGB_DAT).unwrap(),
+        ))
+        .unwrap()
+        .unwrap();
+
+    let img = setup_image(images, tex);
+
+    let material_handle = materials.add(StandardMaterial {
+        base_color_texture: Some(img.clone()),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
+
+    // textured quad - normal
+    commands.spawn((
+        Mesh3d(quad_handle.clone()),
+        MeshMaterial3d(material_handle),
+        Transform::from_xyz(eye_pos.x / 256.0, eye_pos.y / 256.0, 1.0),
+        render_layer.clone(),
+    ));
+
+    // load mouth
+
+    let mouth_pos = mask_info.mouth;
+
+    let mut bin = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT).unwrap());
+
+    let vee_textures = ResourceTexture::read(&mut bin).unwrap();
+
+    let tex = vee_textures.mouth[mii.mouth_type as usize];
+
+    let quad_handle = meshes.add(Rectangle::new(
+        f32::from(tex.texture.width) / 256.0 * 2.,
+        f32::from(tex.texture.height) / 256.0 * 2.,
+    ));
+
+    let tex = tex
+        .get_image(&mut BufReader::new(
+            File::open(TEXTURE_MID_SRGB_DAT).unwrap(),
+        ))
+        .unwrap()
+        .unwrap();
+
+    let img = setup_image(images, tex);
+
+    let material_handle = materials.add(StandardMaterial {
+        base_color_texture: Some(img.clone()),
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        ..default()
+    });
+
+    // textured quad - normal
+    commands.spawn((
+        Mesh3d(quad_handle.clone()),
+        MeshMaterial3d(material_handle),
+        Transform::from_xyz(mouth_pos.x / 256.0, mouth_pos.y / 256.0, 1.0),
+        render_layer,
+    ));
+}
+
+fn setup_rendtotexexample(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+    mut res: ResMut<MiiDataRes>,
+) {
+    res.0 = Some(load::get_res().unwrap());
+
+    let size = Extent3d {
+        width: 512,
+        height: 512,
+        ..default()
+    };
+
+    // This is the texture that will be rendered to.
+    let mut image = Image::new_fill(
+        size,
+        TextureDimension::D2,
+        &[0, 0, 0, 0],
+        TextureFormat::Bgra8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+    // You need to set these texture usage flags in order to use the image as a render target
+    image.texture_descriptor.usage =
+        TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST | TextureUsages::RENDER_ATTACHMENT;
+
+    let image_handle = images.add(image);
+
+    let cube_handle = meshes.add(Cuboid::new(4.0, 4.0, 4.0));
+    let cube_material_handle = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.8, 0.7, 0.6),
+        reflectance: 0.02,
+        unlit: false,
+        ..default()
+    });
+
+    // This specifies the layer used for the first pass, which will be attached to the first pass camera and cube.
+    let first_pass_layer = RenderLayers::layer(1);
+
+    // The cube that will be rendered to the texture.
+    // commands.spawn((
+    //     Mesh3d(cube_handle),
+    //     MeshMaterial3d(cube_material_handle),
+    //     Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
+    //     FirstPassCube,
+    //     first_pass_layer.clone(),
+    // ));
+
+    draw_mii_mask(
+        &mut materials,
+        &mut meshes,
+        &mut images,
+        &mut commands,
+        first_pass_layer.clone(),
+    );
+
+    // Light
+    // NOTE: we add the light to both layers so it affects both the rendered-to-texture cube, and the cube on which we display the texture
+    // Setting the layer to RenderLayers::layer(0) would cause the main view to be lit, but the rendered-to-texture cube to be unlit.
+    // Setting the layer to RenderLayers::layer(1) would cause the rendered-to-texture cube to be lit, but the main view to be unlit.
+    commands.spawn((
+        PointLight::default(),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+        RenderLayers::layer(1),
+    ));
+
+    commands.spawn((
+        Camera3d::default(),
+        Projection::Perspective(PerspectiveProjection::default()),
+        Camera {
+            target: image_handle.clone().into(),
+            clear_color: Color::NONE.into(),
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(0.0, 0.0, 15.0)).looking_at(Vec3::ZERO, Vec3::Y),
+        first_pass_layer,
+    ));
+
+    // This material has the texture that has been rendered.
+    let material_handle = materials.add(StandardMaterial {
+        base_color_texture: Some(image_handle),
+        reflectance: 0.02,
+        unlit: false,
+        alpha_mode: AlphaMode::Mask(0.5),
+        ..default()
+    });
+
+    commands.spawn({
+        let meshes: &mut ResMut<Assets<Mesh>> = &mut meshes;
+        let res: &ResourceShape = &res.0.unwrap();
+        let shape = Shape::Mask;
+
+        (
+            Mesh3d(meshes.add(load_mesh(*res, shape, 1).unwrap())),
+            MeshMaterial3d(material_handle),
+            Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.05)),
+        )
+    });
+
+    // Main pass cube, with material containing the rendered first pass texture.
+    // commands.spawn((
+    //     Mesh3d(cube_handle),
+    //     MeshMaterial3d(material_handle),
+    //     Transform::from_xyz(0.0, 0.0, 1.5).with_rotation(Quat::from_rotation_x(-PI / 5.0)),
+    //     MainPassCube,
+    // ));
+
+    // The main pass camera.
+    // commands.spawn((
+    //     Camera3d::default(),
+    //     Transform::from_xyz(0.0, 0.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+    // ));
+}
+
+/// Rotates the inner cube (first pass)
+fn rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<FirstPassCube>>) {
+    for mut transform in &mut query {
+        transform.rotate_x(1.5 * time.delta_secs());
+        transform.rotate_z(1.3 * time.delta_secs());
+    }
+}
+
+/// Rotates the outer cube (main pass)
+fn cube_rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<MainPassCube>>) {
+    for mut transform in &mut query {
+        transform.rotate_x(1.0 * time.delta_secs());
+        transform.rotate_y(0.7 * time.delta_secs());
     }
 }
