@@ -28,7 +28,7 @@ pub fn load_mesh(res: ResourceShape, shape: Shape, hair_num: usize) -> Result<Me
     #[cfg(target_family = "wasm")]
     let mesh = {
         use vee::shape_load::nx::SHAPE_MID_DAT_LOADED;
-        let mut file = Cursor::new(SHAPE_MID_DAT_LOADED);
+        let mut file = std::io::Cursor::new(SHAPE_MID_DAT_LOADED);
         shape.shape_data(&mut file).unwrap()
     };
     #[cfg(not(target_family = "wasm"))]
@@ -44,7 +44,7 @@ pub fn get_res() -> Result<ResourceShape> {
     #[cfg(target_family = "wasm")]
     {
         use vee::shape_load::nx::SHAPE_MID_DAT_LOADED;
-        let mut bin = BufReader::new(Cursor::new(SHAPE_MID_DAT_LOADED));
+        let mut bin = BufReader::new(std::io::Cursor::new(SHAPE_MID_DAT_LOADED));
         Ok(ResourceShape::read(&mut bin)?)
     }
     #[cfg(not(target_family = "wasm"))]

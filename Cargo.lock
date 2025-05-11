@@ -5399,6 +5399,7 @@ dependencies = [
  "glam 0.30.3",
  "half",
  "image 0.25.6",
+ "itertools 0.14.0",
  "mesh-tools",
  "mint",
  "nalgebra 0.33.2",
