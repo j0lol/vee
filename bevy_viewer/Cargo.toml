@@ -9,3 +9,4 @@ bevy_egui = "0.34.1"
 bevy = { version = "0.16.0", features = ["bevy_picking", "bevy_dev_tools"] }
 binrw = "0.15.0"
 image = "0.25.6"
+bevy_image_export = "0.13.0"

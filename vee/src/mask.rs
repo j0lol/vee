@@ -165,8 +165,8 @@ const RFL_MAGIC_Y_OFFSET: f32 = 1.160_000_1;
 //     *p_mv_matrix *= transform_matrix;
 // }
 
-#[derive(Clone, Copy, Debug)]
-enum ImageOrigin {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ImageOrigin {
     Center,
     Left,
     Right,

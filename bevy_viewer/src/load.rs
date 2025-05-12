@@ -1,15 +1,11 @@
-use crate::{GuiData, MiiDataRes, MiiMesh};
+use crate::CharMesh;
 use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
-    render::{
-        mesh::{Indices, PrimitiveTopology},
-        render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages},
-        view::RenderLayers,
-    },
+    render::mesh::{Indices, PrimitiveTopology},
 };
 use binrw::{BinRead, io::BufReader};
-use image::{DynamicImage, ImageBuffer, RgbaImage};
+use image::{DynamicImage, RgbaImage};
 use std::fs::File;
 use vee::{
     color::cafe::HAIR_COLOR,
@@ -21,12 +17,21 @@ fn shape_data_to_mesh(data: ShapeData) -> Mesh {
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
     )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, data.positions)
-    .with_inserted_indices(Indices::U16(data.indices))
-    .with_computed_normals();
+    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, data.positions.clone())
+    .with_inserted_indices(Indices::U16(data.indices));
 
     if let Some(uvs) = data.uvs {
         mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    } else {
+        println!("Missing UVs!");
+        let uvs: Vec<_> = data.positions.into_iter().map(|[x, y, z]| [x, y]).collect();
+        mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    }
+
+    if let Some(normals) = data.normals {
+        mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    } else {
+        mesh = mesh.with_computed_normals();
     }
 
     mesh
@@ -79,7 +84,23 @@ pub fn shape_bundle(
         Mesh3d(meshes.add(load_mesh(*res, shape, hair_num).unwrap())),
         MeshMaterial3d(materials.add(Color::srgb_from_array([r, g, b]))),
         Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.05)),
-        MiiMesh,
+        CharMesh,
+    )
+}
+
+pub fn shape_tex_bundle(
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    res: &ResourceShape,
+    hair_num: usize,
+    tex: Handle<Image>,
+    shape: Shape,
+) -> impl Bundle {
+    (
+        Mesh3d(meshes.add(load_mesh(*res, shape, hair_num).unwrap())),
+        MeshMaterial3d(materials.add(StandardMaterial::from(tex))),
+        Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.05)),
+        CharMesh,
     )
 }
 
