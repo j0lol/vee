@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 binrw = "0.15.0"
+bytemuck = "1.23.0"
 flate2 = { version = "1.1.1", features = ["rust_backend"] }
+futures-intrusive = "0.5.0"
 glam = { version = "0.30.3", features = ["mint"] }
 half = "2.6.0"
 image = "0.25.6"
@@ -13,10 +15,12 @@ itertools = "0.14.0"
 mesh-tools = { version = "0.1.0", optional = true }
 mint = "0.5.9"
 nalgebra = { version = "0.33.2", features = ["mint"] }
+pollster = "0.4.0"
 strum = { version = "0.27.1", features = ["strum_macros"] }
 strum_macros = "0.27.1"
 tegra_swizzle = "0.4.0"
 texture2ddecoder = "0.1.2"
+wgpu = "25.0.0"
 
 [features]
 gltf = ["mesh-tools"]

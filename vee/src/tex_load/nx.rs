@@ -130,7 +130,6 @@ impl TextureElement {
                     .iter()
                     .map(|x| {
                         let [_, _, w, _] = x.to_le_bytes();
-
                         u32::from_le_bytes([w, w, w, w])
                     })
                     .collect();
@@ -148,7 +147,6 @@ impl TextureElement {
                     .iter()
                     .map(|x| {
                         let [w, a, _, _] = x.to_le_bytes();
-
                         u32::from_le_bytes([w, w, w, a])
                     })
                     .collect();
@@ -156,7 +154,7 @@ impl TextureElement {
             ResourceTextureFormat::R => {
                 tex_data_decoded = tex_data
                     .iter()
-                    .map(|x| u32::from_le_bytes([*x, *x, *x, *x]))
+                    .map(|x| u32::from_le_bytes([*x, *x, *x, 255]))
                     .collect();
             }
             ResourceTextureFormat::Astc4x4 => {
