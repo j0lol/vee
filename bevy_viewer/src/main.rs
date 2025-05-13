@@ -3,7 +3,10 @@ use bevy::{
     color::palettes::css::PURPLE,
     dev_tools::picking_debug::{DebugPickingMode, DebugPickingPlugin},
     image::ImageType,
-    input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
+    input::{
+        gestures::{PanGesture, PinchGesture},
+        mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
+    },
     math::VectorSpace,
     prelude::*,
     render::{
@@ -248,6 +251,8 @@ impl Default for CameraSettings {
 fn orbit(
     mut camera: Single<&mut Transform, With<MainPassCamera>>,
     mut camera_settings: ResMut<CameraSettings>,
+    mut evr_gesture_pinch: EventReader<PinchGesture>,
+    mut evr_gesture_pan: EventReader<PanGesture>,
     mouse_motion: Res<AccumulatedMouseMotion>,
     scroll_motion: Res<AccumulatedMouseScroll>,
     time: Res<Time>,
@@ -259,9 +264,21 @@ fn orbit(
     let delta = mouse_motion.delta;
     let mut delta_roll = 0.0;
 
+    // if let Some(mut evr_gesture_pinch) = evr_gesture_pinch {
+    for ev_pinch in evr_gesture_pinch.read() {
+        camera_settings.orbit_distance -= ev_pinch.0 * 10.0;
+    }
+    // }
     camera_settings.orbit_distance += scroll_motion.delta.y;
     camera_settings.orbit_distance = camera_settings.orbit_distance.clamp(1.0, 1000.0);
 
+    let mut pan = vec2(0.0, 0.0);
+    // if let Some(mut evr_gesture_pan) = evr_gesture_pan {
+    for ev_pan in evr_gesture_pan.read() {
+        pan.x += ev_pan.0.x;
+        pan.y += ev_pan.0.y;
+    }
+    // }
     // Mouse motion is one of the few inputs that should not be multiplied by delta time,
     // as we are already receiving the full movement since the last frame was rendered. Multiplying
     // by delta time here would make the movement slower that it should be.
@@ -286,7 +303,8 @@ fn orbit(
     // Adjust the translation to maintain the correct orientation toward the orbit target.
     // In our example it's a static target, but this could easily be customized.
     let target = Vec3::ZERO.with_y(1.0);
-    camera.translation = target - camera.forward() * camera_settings.orbit_distance;
+    camera.translation =
+        target - camera.forward() * camera_settings.orbit_distance + pan.extend(0.0);
 }
 
 mod egui_blocking_plugin {
