@@ -180,34 +180,8 @@ pub struct FacePart {
     pub height: f32,
     pub angle_deg: f32,
     pub origin: ImageOrigin,
-    // image: RgbaImage,
 }
 
-impl FacePart {
-    fn offset(&self) {
-        let mut pos_x_offset;
-        let mut tex_coord_x01;
-        let mut tex_coord_x23;
-
-        match self.origin {
-            ImageOrigin::Center => {
-                pos_x_offset = -0.5;
-                tex_coord_x01 = 1.0;
-            }
-            ImageOrigin::Left => {
-                pos_x_offset = -1.0;
-                tex_coord_x01 = 1.0;
-            }
-            ImageOrigin::Right => {
-                tex_coord_x23 = 1.0;
-            }
-        }
-
-        let pos_x = [1.0, 1.0, 0.0, 0.0];
-        let pos_y = [-0.5, 0.5, 0.5, -0.5];
-        let tex_coord_y = [-0.5, 0.5, 0.5, -0.5];
-    }
-}
 #[derive(Clone, Copy, Debug)]
 pub struct FaceParts {
     pub eye: [FacePart; 2],
@@ -222,7 +196,7 @@ impl FaceParts {
         // RFLi_TEX_UNIT
         let resolution = resolution / 64.0;
 
-        let eye_x = TEX_EYE_BASE_X + TEX_SCALE_X * f32::from(info.eye_x);
+        let eye_spacing_x = TEX_EYE_BASE_X + TEX_SCALE_X * f32::from(info.eye_x);
         let eye_y = TEX_EYE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.eye_y);
         let eye_w = TEX_EYE_BASE_W * tex_scale2dim(info.eye_scale.into());
         let eye_h = TEX_EYE_BASE_H * tex_scale2dim(info.eye_scale.into());
@@ -230,7 +204,7 @@ impl FaceParts {
             tex_rotate2ang((info.eye_rotate + EYE_ROT_OFFSET[info.eye_type as usize]).into());
 
         let eye_l = FacePart {
-            x: eye_x * resolution * (32.0 + eye_x),
+            x: resolution * (32.0 + eye_spacing_x),
             y: eye_y * resolution,
             width: eye_w * resolution,
             height: eye_h * resolution,
@@ -238,7 +212,7 @@ impl FaceParts {
             origin: ImageOrigin::Left,
         };
         let eye_r = FacePart {
-            x: eye_x * resolution * (32.0 - eye_x),
+            x: resolution * (32.0 - eye_spacing_x),
             y: eye_y * resolution,
             width: eye_w * resolution,
             height: eye_h * resolution,
@@ -246,7 +220,7 @@ impl FaceParts {
             origin: ImageOrigin::Right,
         };
 
-        let eb_x = TEX_EYEBROW_BASE_X + TEX_SCALE_X * f32::from(info.eyebrow_x);
+        let eb_spacing_x = TEX_EYEBROW_BASE_X + TEX_SCALE_X * f32::from(info.eyebrow_x);
         let eb_y =
             TEX_EYEBROW_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.eyebrow_y);
         let eb_w = TEX_EYEBROW_BASE_W * tex_scale2dim(info.eyebrow_scale.into());
@@ -255,7 +229,7 @@ impl FaceParts {
             (info.eyebrow_rotate + EYE_ROT_OFFSET[info.eyebrow_type as usize]).into(),
         );
         let eb_l = FacePart {
-            x: eb_x * resolution * (32.0 + eb_x),
+            x: resolution * (32.0 + eb_spacing_x),
             y: eb_y * resolution,
             width: eb_w * resolution,
             height: eb_h * resolution,
@@ -263,7 +237,7 @@ impl FaceParts {
             origin: ImageOrigin::Left,
         };
         let eb_r = FacePart {
-            x: eb_x * resolution * (32.0 - eb_x),
+            x: resolution * (32.0 - eb_spacing_x),
             y: eb_y * resolution,
             width: eb_w * resolution,
             height: eb_h * resolution,

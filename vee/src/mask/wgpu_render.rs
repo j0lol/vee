@@ -2,16 +2,97 @@ use super::{ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
 use crate::shape_load::nx::ShapeData;
 use glam::{UVec2, Vec2, Vec3, vec3};
 use image::{DynamicImage, GenericImageView, RgbaImage};
-use nalgebra::Matrix3;
+use nalgebra::{Matrix3, Matrix4, Vector3};
 use std::mem;
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
-fn transformation_matrix(
+const SHADER: &str = r"
+
+struct MvpUniform {
+    mtx: mat4x4<f32>,
+};
+@group(1) @binding(0) // 1.
+var<uniform> mvp: MvpUniform;
+
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) tex_coords: vec2<f32>,
+}
+
+@vertex
+fn vs_main(
+    @location(0) position: vec3<f32>,
+    @location(1) tex_coords: vec2<f32>
+) -> VertexOutput {
+    var out: VertexOutput;
+    out.tex_coords = tex_coords;
+    out.clip_position = mvp.mtx * vec4<f32>(position, 1.0);
+    return out;
+}
+
+@group(0) @binding(0)
+var t_diffuse: texture_2d<f32>;
+@group(0) @binding(1)
+var s_diffuse: sampler;
+
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    let color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
+
+    if (color.a == 0.0) {
+      discard;
+    }
+
+    return color;
+}
+";
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct MvpMatrixUniform {
+    mvp_matrix: [[f32; 4]; 4],
+}
+
+struct RenderContext {
+    size: UVec2,
+    shape: Vec<RenderShape>,
+}
+
+struct RenderShape {
+    vertices: Vec<Vertex>,
+    indices: Vec<u32>,
+    tex: DynamicImage,
+    mvp_matrix: Matrix4<f32>,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+    position: [f32; 3],
+    tex_coords: [f32; 2],
+}
+
+impl Vertex {
+    const ATTRIBS: [wgpu::VertexAttribute; 2] =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+
+    fn desc() -> wgpu::VertexBufferLayout<'static> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
+
+fn model_view_matrix(
     translation: mint::Vector3<f32>,
     scale: mint::Vector3<f32>,
     rot_z: f32,
 ) -> nalgebra::Matrix4<f32> {
-    let scale = nalgebra::Vector3::<f32>::from(scale);
+    let mut scale = nalgebra::Vector3::<f32>::from(scale);
     let translation = nalgebra::Vector3::<f32>::from(translation);
 
     let mut mtx = nalgebra::Matrix4::identity();
@@ -35,6 +116,7 @@ fn quad(
     height: f32,
     rot_z: f32,
     origin: ImageOrigin,
+    resolution: f32,
 ) -> (Vec<Vertex>, Vec<u32>, nalgebra::Matrix4<f32>) {
     //     Mtx rot;
     //     Mtx pos;
@@ -45,11 +127,14 @@ fn quad(
     let s0: f32;
     let s1: f32;
 
-    let mtx = transformation_matrix(
+    let mv_mtx = model_view_matrix(
         vec3(x, y, 0.0).into(),
         vec3(width, height, 1.0).into(),
         rot_z,
     );
+
+    let p_mtx = Matrix4::new_orthographic(0.0, resolution, 0.0, resolution, -200.0, 200.0);
+    let mvp_mtx = p_mtx * mv_mtx;
 
     match origin {
         ImageOrigin::Center => {
@@ -73,90 +158,24 @@ fn quad(
         vec![
             Vertex {
                 position: v2(1.0 + base_x, -0.5),
-                tex_coords: [s0, 1.0],
-            },
-            Vertex {
-                position: v2(1.0 + base_x, 0.5),
                 tex_coords: [s0, 0.0],
             },
             Vertex {
+                position: v2(1.0 + base_x, 0.5),
+                tex_coords: [s0, 1.0],
+            },
+            Vertex {
                 position: v2(base_x, 0.5),
-                tex_coords: [s1, 0.0],
+                tex_coords: [s1, 1.0],
             },
             Vertex {
                 position: v2(base_x, -0.5),
-                tex_coords: [s1, 1.0],
+                tex_coords: [s1, 0.0],
             },
         ],
         vec![0, 1, 2, 0, 2, 3],
-        mtx,
+        mvp_mtx,
     )
-}
-
-const SHADER: &str = r"
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) tex_coords: vec2<f32>,
-}
-
-@vertex
-fn vs_main(
-    @location(0) position: vec3<f32>,
-    @location(1) tex_coords: vec2<f32>
-) -> VertexOutput {
-    var out: VertexOutput;
-    out.tex_coords = tex_coords;
-    out.clip_position = vec4<f32>(position, 1.0);
-    return out;
-}
-
-@group(0) @binding(0)
-var t_diffuse: texture_2d<f32>;
-@group(0) @binding(1)
-var s_diffuse: sampler;
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-
-    if (color.a == 0.0) {
-      discard;
-    }
-
-    return color;
-}
-";
-
-struct RenderContext {
-    size: UVec2,
-    shape: Vec<RenderShape>,
-}
-
-struct RenderShape {
-    vertices: Vec<Vertex>,
-    indices: Vec<u32>,
-    tex: DynamicImage,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
-
-    fn desc() -> wgpu::VertexBufferLayout<'static> {
-        use std::mem;
-        wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
-        }
-    }
 }
 
 #[allow(clippy::too_many_lines)]
@@ -321,6 +340,39 @@ async fn wgpu(render_context: RenderContext) -> DynamicImage {
             label: Some("diffuse_bind_group"),
         });
 
+        let mvp_matrix = shape.mvp_matrix.into();
+        let mvp_uniform = MvpMatrixUniform { mvp_matrix };
+
+        let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("MvpMatrix Buffer"),
+            contents: bytemuck::cast_slice(&[mvp_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let mvp_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("mvp_bind_group_layout"),
+            });
+
+        let mvp_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &mvp_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: mvp_buffer.as_entire_binding(),
+            }],
+            label: Some("mvp_bind_group"),
+        });
+
         let shader = wgpu::ShaderSource::Wgsl(SHADER.into());
         let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
@@ -329,7 +381,7 @@ async fn wgpu(render_context: RenderContext) -> DynamicImage {
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout],
+                bind_group_layouts: &[&texture_bind_group_layout, &mvp_bind_group_layout],
                 push_constant_ranges: &[],
             });
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -394,6 +446,7 @@ async fn wgpu(render_context: RenderContext) -> DynamicImage {
 
             render_pass.set_pipeline(&render_pipeline);
             render_pass.set_bind_group(0, &shape_diffuse_bind_group, &[]);
+            render_pass.set_bind_group(1, &mvp_bind_group, &[]);
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
@@ -466,6 +519,7 @@ mod tests {
     type R = Result<(), Box<dyn Error>>;
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_render() -> R {
         let res_shape = ResourceShape::read(&mut BufReader::new(File::open(SHAPE_MID_DAT)?))?;
         let mut tex_file = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
@@ -487,6 +541,7 @@ mod tests {
             part.height,
             part.angle_deg,
             part.origin,
+            256.0,
         );
 
         let tex = tex.get_image(&mut tex_file)?.unwrap();
@@ -495,8 +550,78 @@ mod tests {
             vertices,
             indices,
             tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
         };
 
+        let part = mask.eye[1];
+        let tex = res_texture.eye[char.eye_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(&mut tex_file)?.unwrap();
+
+        let eye_1_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        // brows
+
+        let part = mask.eyebrow[0];
+        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(&mut tex_file)?.unwrap();
+
+        let eyebrow_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        let part = mask.eyebrow[1];
+        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(&mut tex_file)?.unwrap();
+
+        let eyebrow_1_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        // mouth
         let part = mask.mouth;
         let tex = res_texture.mouth[char.mouth_type as usize];
 
@@ -507,6 +632,7 @@ mod tests {
             part.height,
             part.angle_deg,
             part.origin,
+            256.0,
         );
 
         let tex = tex.get_image(&mut tex_file)?.unwrap();
@@ -515,11 +641,18 @@ mod tests {
             vertices,
             indices,
             tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
         };
 
         let image = pollster::block_on(wgpu(RenderContext {
             size: uvec2(256, 256),
-            shape: vec![eye_render_shape, mouth_render_shape],
+            shape: vec![
+                eye_render_shape,
+                eye_1_render_shape,
+                eyebrow_render_shape,
+                eyebrow_1_render_shape,
+                mouth_render_shape,
+            ],
         }));
 
         image.save("image.png")?;
