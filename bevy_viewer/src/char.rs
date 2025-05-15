@@ -3,7 +3,7 @@ use crate::{CharDataRes, load};
 use bevy::prelude::*;
 use binrw::BinRead;
 use std::{fs::File, io::BufReader};
-use vee::{
+use vfl::{
     charinfo::nx::NxCharInfo,
     shape_load::nx::Shape,
     tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},

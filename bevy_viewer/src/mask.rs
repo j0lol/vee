@@ -8,7 +8,7 @@ use bevy::{
 };
 use binrw::BinRead;
 use std::{fs::File, io::BufReader};
-use vee::{
+use vfl::{
     charinfo::nx::NxCharInfo,
     mask::wgpu_render::{RenderContext, render_context_wgpu},
     shape_load::nx::{ResourceShape, SHAPE_MID_DAT, Shape},

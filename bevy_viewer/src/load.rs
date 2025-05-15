@@ -7,7 +7,7 @@ use bevy::{
 use binrw::{BinRead, io::BufReader};
 use image::{DynamicImage, RgbaImage};
 use std::fs::File;
-use vee::{
+use vfl::{
     color::cafe::HAIR_COLOR,
     shape_load::nx::{GenericResourceShape, ResourceShape, SHAPE_MID_DAT, Shape, ShapeData},
 };

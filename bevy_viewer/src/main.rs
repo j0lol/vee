@@ -15,7 +15,7 @@ use char::setup_char;
 use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
 use mask::{setup_glasses, setup_mask};
 use std::f32::consts::*;
-use vee::{
+use vfl::{
     color::cafe::HAIR_COLOR,
     shape_load::nx::{ResourceShape, Shape},
 };

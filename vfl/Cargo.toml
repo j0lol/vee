@@ -1,7 +1,8 @@
 [package]
-name = "vee"
-version = "0.1.0"
+name = "vfl"
+version = "0.0.0"
 edition = "2024"
+exclude = ["*.png", "*.glb", "*.dat"]
 
 [dependencies]
 binrw = "0.15.0"

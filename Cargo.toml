@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [ "bevy_viewer", "vee" ]
+members = ["bevy_viewer", "vfl"]
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
