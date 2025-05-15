@@ -1,4 +1,4 @@
-# VFL --- Vee Face Library
+# VFL — Vee Face Library
 
 Research library for replicating Mii functionality from decompilations in a more modern language & runtime. Ideally, this library will replicate functionality accurately from these targets:
 - Cafe (WUP)
