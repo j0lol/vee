@@ -1,11 +1,12 @@
-use std::error::Error;
-
 use crate::{
     shape_load::nx::ResourceCommonAttribute,
     utils::{ReadSeek, inflate_bytes, read_byte_slice},
 };
 use binrw::BinRead;
 use image::{ImageBuffer, Rgba, RgbaImage};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use std::error::Error;
+use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
 pub const TEXTURE_MID_SRGB_DAT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/NXTextureMidSRGB.dat");
 
@@ -25,12 +26,12 @@ pub struct TextureElement {
     pub common: ResourceCommonAttribute,
     pub texture: ResourceTextureAttribute,
 }
-use strum_macros::FromRepr;
-use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
 // Format rundown:
 // https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/#comparison-table
-#[derive(FromRepr, Debug)]
+
+#[derive(IntoPrimitive, TryFromPrimitive, Debug)]
+#[repr(u8)]
 enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
     Rb = 1,      // R8B8Unorm
@@ -54,19 +55,18 @@ impl TextureElement {
         let needs_swizzling = self.texture.tile_mode == 0;
 
         let tex_data = if needs_swizzling {
-            let block_size =
-                match ResourceTextureFormat::from_repr(self.texture.format as usize).unwrap() {
-                    ResourceTextureFormat::R
-                    | ResourceTextureFormat::Rb
-                    | ResourceTextureFormat::Rgba => 1,
-                    ResourceTextureFormat::Bc4
-                    | ResourceTextureFormat::Bc5
-                    | ResourceTextureFormat::Bc7
-                    | ResourceTextureFormat::Astc4x4 => 4,
-                };
+            let block_size = match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
+                ResourceTextureFormat::R
+                | ResourceTextureFormat::Rb
+                | ResourceTextureFormat::Rgba => 1,
+                ResourceTextureFormat::Bc4
+                | ResourceTextureFormat::Bc5
+                | ResourceTextureFormat::Bc7
+                | ResourceTextureFormat::Astc4x4 => 4,
+            };
 
             let bytes_per_pixel =
-                match ResourceTextureFormat::from_repr(self.texture.format as usize).unwrap() {
+                match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
                     ResourceTextureFormat::R
                     | ResourceTextureFormat::Rb
                     | ResourceTextureFormat::Rgba => 1,
@@ -95,6 +95,7 @@ impl TextureElement {
         Ok(tex_data)
     }
 
+    #[cfg(feature = "draw")]
     pub fn get_uncompressed_bytes(
         &self,
         file: &mut dyn ReadSeek,
@@ -108,7 +109,7 @@ impl TextureElement {
 
         let mut tex_data_decoded =
             vec![0; (u32::from(self.texture.width) * u32::from(self.texture.height)) as usize];
-        match ResourceTextureFormat::from_repr(self.texture.format as usize).unwrap() {
+        match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
             ResourceTextureFormat::Bc7 => {
                 texture2ddecoder::decode_bc7(
                     &tex_data,
@@ -179,6 +180,8 @@ impl TextureElement {
 
         Ok(Some(tex_data_decoded))
     }
+
+    #[cfg(feature = "draw")]
     pub fn get_image(&self, file: &mut dyn ReadSeek) -> Result<Option<RgbaImage>, Box<dyn Error>> {
         let bytes = match self.get_uncompressed_bytes(file) {
             Ok(Some(bytes)) => bytes,
@@ -234,6 +237,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "draw")]
     fn eye_tex() -> R {
         let mut bin = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
 

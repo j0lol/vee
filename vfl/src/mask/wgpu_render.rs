@@ -1,16 +1,15 @@
-use super::{FacePart, FaceParts, ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
+use super::{FaceParts, ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
 use crate::{
-    charinfo::nx::NxCharInfo,
-    shape_load::nx::{ResourceShape, ShapeData},
-    tex_load::nx::ResourceTexture,
+    charinfo::nx::NxCharInfo, shape_load::nx::ResourceShape, tex_load::nx::ResourceTexture,
 };
 use binrw::BinRead;
-use glam::{UVec2, Vec2, Vec3, uvec2, vec3};
-use image::{DynamicImage, GenericImageView, RgbaImage};
-use nalgebra::{Matrix3, Matrix4, Vector3};
-use std::{error::Error, fs::File, io::BufReader, mem};
+use glam::{UVec2, uvec2, vec3};
+use image::{DynamicImage, RgbaImage};
+use nalgebra::Matrix4;
+use std::{error::Error, fs::File, io::BufReader};
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
+pub const FACE_OUTPUT_SIZE: u16 = 1024;
 const SHADER: &str = r"
 
 struct MvpUniform {
@@ -65,6 +64,7 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
+    #[allow(clippy::too_many_lines)]
     pub fn new(
         char: &NxCharInfo,
         (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
@@ -187,7 +187,7 @@ impl RenderContext {
         };
 
         Ok(RenderContext {
-            size: uvec2(256, 256),
+            size: uvec2(FACE_OUTPUT_SIZE.into(), FACE_OUTPUT_SIZE.into()),
             shape: vec![
                 eye_render_shape,
                 eye_1_render_shape,
@@ -210,7 +210,7 @@ impl RenderContext {
         // let mask = FaceParts::init(&char, 256.0);
         // let part = mask[0];
         let tex = res_texture.glass[char.glass_type as usize];
-        let glass_l = glasses[0];
+        let mut glass_l = glasses[0];
 
         let (vertices, indices, mtx) = quad(
             glass_l.x,

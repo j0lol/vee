@@ -1,13 +1,6 @@
-use crate::{
-    charinfo::{self, nx::NxCharInfo},
-    shape_load::nx::{ResourceShape, SHAPE_MID_DAT},
-    tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
-};
-use binrw::BinRead;
-use image::RgbaImage;
-use nalgebra::{Matrix3x4, Matrix4, Rotation3, Scale2, Vector2, Vector3, matrix, stack};
-use std::{fs::File, io::BufReader};
+use crate::charinfo::nx::NxCharInfo;
 
+#[cfg(feature = "draw")]
 pub mod wgpu_render;
 
 const fn tex_scale2dim(scale: f32) -> f32 {
@@ -334,8 +327,10 @@ impl FaceParts {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use std::{error::Error, f32::consts::PI};
+    use crate::shape_load::nx::{ResourceShape, SHAPE_MID_DAT};
+    use binrw::BinRead;
+    use std::error::Error;
+    use std::{fs::File, io::BufReader};
 
     type R = Result<(), Box<dyn Error>>;
 
@@ -352,7 +347,7 @@ mod tests {
     //         },
     //     );
     // }
-    //
+
     #[test]
     fn mask_shape() -> R {
         let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);

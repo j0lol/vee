@@ -10,7 +10,7 @@ use binrw::BinRead;
 use std::{fs::File, io::BufReader};
 use vfl::{
     charinfo::nx::NxCharInfo,
-    mask::wgpu_render::{RenderContext, render_context_wgpu},
+    mask::wgpu_render::{FACE_OUTPUT_SIZE, RenderContext, render_context_wgpu},
     shape_load::nx::{ResourceShape, SHAPE_MID_DAT, Shape},
     tex_load::nx::TEXTURE_MID_SRGB_DAT,
 };
@@ -61,8 +61,8 @@ pub fn setup_mask(
     res.0 = Some(load::get_res().unwrap());
 
     let size = Extent3d {
-        width: 256,
-        height: 256,
+        width: FACE_OUTPUT_SIZE.into(),
+        height: FACE_OUTPUT_SIZE.into(),
         ..default()
     };
 
