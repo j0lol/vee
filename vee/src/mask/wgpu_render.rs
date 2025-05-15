@@ -1,9 +1,14 @@
-use super::{ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
-use crate::shape_load::nx::ShapeData;
-use glam::{UVec2, Vec2, Vec3, vec3};
+use super::{FacePart, FaceParts, ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
+use crate::{
+    charinfo::nx::NxCharInfo,
+    shape_load::nx::{ResourceShape, ShapeData},
+    tex_load::nx::ResourceTexture,
+};
+use binrw::BinRead;
+use glam::{UVec2, Vec2, Vec3, uvec2, vec3};
 use image::{DynamicImage, GenericImageView, RgbaImage};
 use nalgebra::{Matrix3, Matrix4, Vector3};
-use std::mem;
+use std::{error::Error, fs::File, io::BufReader, mem};
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
 const SHADER: &str = r"
@@ -54,9 +59,202 @@ struct MvpMatrixUniform {
     mvp_matrix: [[f32; 4]; 4],
 }
 
-struct RenderContext {
+pub struct RenderContext {
     size: UVec2,
     shape: Vec<RenderShape>,
+}
+
+impl RenderContext {
+    pub fn new(
+        char: &NxCharInfo,
+        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+    ) -> Result<Self, Box<dyn Error>> {
+        let res_shape = ResourceShape::read(file_shape)?;
+        let res_texture = ResourceTexture::read(file_texture)?;
+
+        let mask = FaceParts::init(&char, 256.0);
+        let part = mask.eye[0];
+        let tex = res_texture.eye[char.eye_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(file_texture)?.unwrap();
+
+        let eye_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        let part = mask.eye[1];
+        let tex = res_texture.eye[char.eye_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(file_texture)?.unwrap();
+
+        let eye_1_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        // brows
+
+        let part = mask.eyebrow[0];
+        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(file_texture)?.unwrap();
+
+        let eyebrow_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        let part = mask.eyebrow[1];
+        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(file_texture)?.unwrap();
+
+        let eyebrow_1_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        // mouth
+        let part = mask.mouth;
+        let tex = res_texture.mouth[char.mouth_type as usize];
+
+        let (vertices, indices, mtx) = quad(
+            part.x,
+            part.y,
+            part.width,
+            part.height,
+            part.angle_deg,
+            part.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(file_texture)?.unwrap();
+
+        let mouth_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        Ok(RenderContext {
+            size: uvec2(256, 256),
+            shape: vec![
+                eye_render_shape,
+                eye_1_render_shape,
+                eyebrow_render_shape,
+                eyebrow_1_render_shape,
+                mouth_render_shape,
+            ],
+        })
+    }
+
+    pub fn new_glasses(
+        char: &NxCharInfo,
+        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+    ) -> Result<Self, Box<dyn Error>> {
+        let res_shape = ResourceShape::read(file_shape)?;
+        let res_texture = ResourceTexture::read(file_texture)?;
+
+        let glasses = FaceParts::init_glasses(char, 256.0);
+
+        // let mask = FaceParts::init(&char, 256.0);
+        // let part = mask[0];
+        let tex = res_texture.glass[char.glass_type as usize];
+        let glass_l = glasses[0];
+
+        let (vertices, indices, mtx) = quad(
+            glass_l.x,
+            glass_l.y,
+            glass_l.width,
+            glass_l.height,
+            glass_l.angle_deg,
+            glass_l.origin,
+            256.0,
+        );
+
+        let tex = tex.get_image(file_texture)?.unwrap();
+
+        let glass_l_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex.clone()),
+            mvp_matrix: mtx,
+        };
+
+        let glass_r = glasses[1];
+
+        let (vertices, indices, mtx) = quad(
+            glass_r.x,
+            glass_r.y,
+            glass_r.width,
+            glass_r.height,
+            glass_r.angle_deg,
+            glass_r.origin,
+            256.0,
+        );
+
+        let glass_r_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+        };
+
+        Ok(RenderContext {
+            size: uvec2(512, 256),
+            shape: vec![glass_l_render_shape, glass_r_render_shape],
+        })
+    }
 }
 
 struct RenderShape {
@@ -179,7 +377,7 @@ fn quad(
 }
 
 #[allow(clippy::too_many_lines)]
-async fn wgpu(render_context: RenderContext) -> DynamicImage {
+pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage {
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
         backends: wgpu::Backends::all(),
         ..Default::default()
@@ -521,139 +719,18 @@ mod tests {
     #[test]
     #[allow(clippy::too_many_lines)]
     fn test_render() -> R {
-        let res_shape = ResourceShape::read(&mut BufReader::new(File::open(SHAPE_MID_DAT)?))?;
         let mut tex_file = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
-        let res_texture = ResourceTexture::read(&mut tex_file)?;
+        let mut tex_shape = BufReader::new(File::open(SHAPE_MID_DAT)?);
 
         let mut char =
             File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../Jasmine.charinfo")).unwrap();
-
         let char = NxCharInfo::read(&mut char).unwrap();
 
-        let mask = FaceParts::init(&char, 256.0);
-        let part = mask.eye[0];
-        let tex = res_texture.eye[char.eye_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(&mut tex_file)?.unwrap();
-
-        let eye_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        let part = mask.eye[1];
-        let tex = res_texture.eye[char.eye_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(&mut tex_file)?.unwrap();
-
-        let eye_1_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        // brows
-
-        let part = mask.eyebrow[0];
-        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(&mut tex_file)?.unwrap();
-
-        let eyebrow_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        let part = mask.eyebrow[1];
-        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(&mut tex_file)?.unwrap();
-
-        let eyebrow_1_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        // mouth
-        let part = mask.mouth;
-        let tex = res_texture.mouth[char.mouth_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(&mut tex_file)?.unwrap();
-
-        let mouth_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        let image = pollster::block_on(wgpu(RenderContext {
-            size: uvec2(256, 256),
-            shape: vec![
-                eye_render_shape,
-                eye_1_render_shape,
-                eyebrow_render_shape,
-                eyebrow_1_render_shape,
-                mouth_render_shape,
-            ],
-        }));
+        let image = pollster::block_on(render_context_wgpu(RenderContext::new(
+            // &FaceParts::init(&char, 256.0),
+            &char,
+            (&mut tex_shape, &mut tex_file),
+        )?));
 
         image.save("image.png")?;
 

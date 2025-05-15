@@ -18,7 +18,7 @@ pub fn setup_char(
 ) {
     res.0 = Some(load::get_res().unwrap());
 
-    let mut char = File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../j0.charinfo")).unwrap();
+    let mut char = File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../Jasmine.charinfo")).unwrap();
 
     let char = NxCharInfo::read(&mut char).unwrap();
 
@@ -28,7 +28,7 @@ pub fn setup_char(
         &res.0.unwrap(),
         char.faceline_type as usize,
         4,
-        Shape::FaceLine,
+        dbg!(Shape::FaceLine),
     ));
 
     commands.spawn(shape_bundle(
@@ -37,7 +37,7 @@ pub fn setup_char(
         &res.0.unwrap(),
         char.faceline_type as usize,
         4,
-        Shape::ForeheadNormal,
+        dbg!(Shape::ForeheadNormal),
     ));
 
     // Create and save a handle to the mesh.
@@ -48,32 +48,6 @@ pub fn setup_char(
         &res.0.unwrap(),
         char.hair_type as usize,
         char.hair_color as usize,
-        Shape::HairNormal,
-    ));
-
-    // get faceline transform
-    // load_mesh(&res.0.unwrap(), Shape::FaceLineTransform, hair_num)
-
-    let mut tex = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT).unwrap());
-    let tex = ResourceTexture::read(&mut tex).unwrap();
-
-    let glass_tex = tex.glass[2];
-    let glass_tex = glass_tex
-        .get_image(&mut BufReader::new(
-            File::open(TEXTURE_MID_SRGB_DAT).unwrap(),
-        ))
-        .unwrap()
-        .unwrap();
-    let glass_tex = setup_image(&mut images, glass_tex);
-
-    // Create and save a handle to the mesh.
-    // Render the mesh with the custom texture, and add the marker.
-    commands.spawn(shape_tex_bundle(
-        &mut materials,
-        &mut meshes,
-        &res.0.unwrap(),
-        0,
-        glass_tex,
-        Shape::Glasses,
+        dbg!(Shape::HairNormal),
     ));
 }

@@ -269,7 +269,7 @@ pub struct ResourceShapeFacelineTransform {
     beard_translate: [f32; 3],
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Shape {
     Beard,
     FaceLine,

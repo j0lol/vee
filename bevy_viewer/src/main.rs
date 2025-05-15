@@ -2,36 +2,22 @@ use bevy::{
     asset::RenderAssetUsages,
     color::palettes::css::PURPLE,
     dev_tools::picking_debug::{DebugPickingMode, DebugPickingPlugin},
-    image::ImageType,
     input::{
         gestures::{PanGesture, PinchGesture},
         mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},
     },
-    math::VectorSpace,
     prelude::*,
-    render::{
-        RenderPlugin,
-        render_resource::{
-            AsBindGroup, Extent3d, Texture, TextureDimension, TextureFormat, TextureUsages,
-        },
-        view::RenderLayers,
-    },
+    render::RenderPlugin,
     window::{CursorGrabMode, PrimaryWindow},
 };
 use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
-use bevy_image_export::ImageExportPlugin;
-use binrw::BinRead;
 use char::setup_char;
 use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
-use load::{load_mesh, setup_image, shape_bundle};
-use mask::setup_mask;
-use std::{f32::consts::*, fs::File, io::BufReader};
+use mask::{setup_glasses, setup_mask};
+use std::f32::consts::*;
 use vee::{
-    charinfo::nx::NxCharInfo,
     color::cafe::HAIR_COLOR,
-    mask::{FacePart, FaceParts},
     shape_load::nx::{ResourceShape, Shape},
-    tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT, TextureElement},
 };
 
 mod char;
@@ -59,9 +45,6 @@ impl Default for GuiData {
 }
 
 fn main() {
-    // let export_plugin = ImageExportPlugin::default();
-    // let export_threads = export_plugin.threads.clone();
-
     App::new()
         .init_resource::<CameraSettings>()
         .init_resource::<CharDataRes>()
@@ -75,15 +58,16 @@ fn main() {
             }),
             EguiBlockingPlugin,
         ))
-        .add_systems(Startup, (setup, setup_mask, setup_char).chain())
+        .add_systems(
+            Startup,
+            (setup, setup_mask, setup_char, setup_glasses).chain(),
+        )
         .add_systems(Update, (cursor_ungrab, orbit))
         .add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
         })
         .add_systems(EguiContextPass, ui_example_system)
         .run();
-
-    // export_threads.finish();
 }
 
 fn ui_example_system(

@@ -18,14 +18,32 @@ fn shape_data_to_mesh(data: ShapeData) -> Mesh {
         RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD,
     )
     .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, data.positions.clone())
-    .with_inserted_indices(Indices::U16(data.indices));
+    .with_inserted_indices(Indices::U16(data.indices.clone()));
 
     if let Some(uvs) = data.uvs {
         mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     } else {
-        println!("Missing UVs!");
-        let uvs: Vec<_> = data.positions.into_iter().map(|[x, y, z]| [x, y]).collect();
-        mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+        println!("Missing UVs Probably an untextured shape eg HairNormal.");
+
+        // if data.positions.len() == 4 {
+        //     println!("Probably a Rect, adding Rect UVs.");
+
+        //     let rect_uvs = [[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]];
+        //     let uvs: Vec<[f32; 2]> = rect_uvs
+        //         .into_iter()
+        //         .cycle()
+        //         .take(data.positions.len())
+        //         .collect();
+
+        //     // let uvs: Vec<_> = data.positions.into_iter().map(|[x, y, z]| [x, y]).collect();
+        //     mesh = mesh.with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+        // } else {
+        //     println!(
+        //         "Unknown shape. positions: {} indices: {}",
+        //         data.positions.len(),
+        //         data.indices.len()
+        //     );
+        // }
     }
 
     if let Some(normals) = data.normals {
