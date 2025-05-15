@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-vfl = { path = "../vfl" }
+vfl = { path = "../vfl", features = ["res", "draw"] }
 bevy_egui = "0.34.1"
 bevy = { version = "0.16.0", features = ["bevy_picking", "bevy_dev_tools"] }
 binrw = "0.15.0"

@@ -1,4 +1,3 @@
-use flate2::read::ZlibDecoder;
 use std::{
     error::Error,
     io::{self, Read, SeekFrom},
@@ -42,7 +41,10 @@ pub(crate) fn read_byte_slice(
     Ok(buf)
 }
 
+#[cfg(feature = "res")]
 pub(crate) fn inflate_bytes(bytes: &[u8]) -> io::Result<Vec<u8>> {
+    use flate2::read::ZlibDecoder;
+
     let mut z = ZlibDecoder::new(bytes);
     // z.read_to_string(&mut s)?;
     let mut vec = Vec::new();
