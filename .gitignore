@@ -3,4 +3,5 @@
 *.dat
 *.glb
 *.charinfo
+*.png
 .DS_Store
