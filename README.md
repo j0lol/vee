@@ -16,7 +16,7 @@ Features are limited, currently.
 ## bevy_viewer
 
 Setup:
-- Obtain `ShapeMid.dat` and place in `./vee/`
+- Dump shape and texture resources from your hardware and place in `./vee/`
 - `cargo run`
 
 Web build:

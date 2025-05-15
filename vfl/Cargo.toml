@@ -3,6 +3,12 @@ name = "vfl"
 version = "0.0.0"
 edition = "2024"
 exclude = ["*.png", "*.glb", "*.dat"]
+license = "MIT OR Apache-2.0"
+keywords = ["rendering", "decompilation"]
+categories = ["rendering"]
+repository = "https://github.com/j0lol/vee"
+readme = "README.md"
+description = "Mii parsing and rendering research library"
 
 [dependencies]
 binrw = "0.15.0"
