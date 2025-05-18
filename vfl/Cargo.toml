@@ -36,15 +36,15 @@ futures-intrusive = { version = "0.5.0", optional = true }
 mesh-tools = { version = "0.1.0", optional = true }
 
 [features]
-res = ["image", "tegra_swizzle", "flate2"]
+res = ["dep:image", "dep:tegra_swizzle", "dep:flate2"]
 draw = [
-    "wgpu",
     "res",
-    "futures-intrusive",
-    "texture2ddecoder",
-    "pollster",
-    "glam",
-    "mint",
-    "nalgebra",
+    "dep:wgpu",
+    "dep:futures-intrusive",
+    "dep:texture2ddecoder",
+    "dep:pollster",
+    "dep:glam",
+    "dep:mint",
+    "dep:nalgebra",
 ]
-gltf = ["mesh-tools", "res"]
+gltf = ["res", "dep:mesh-tools"]

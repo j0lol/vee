@@ -264,9 +264,9 @@ pub struct ResourceShapeHairTransform {
 
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceShapeFacelineTransform {
-    hair_translate: [f32; 3],
-    nose_translate: [f32; 3],
-    beard_translate: [f32; 3],
+    pub hair_translate: [f32; 3],
+    pub nose_translate: [f32; 3],
+    pub beard_translate: [f32; 3],
 }
 
 #[derive(Clone, Copy, Debug)]

@@ -47,6 +47,10 @@ const EYE_ROT_OFFSET: [u8; 50] = [
     28, 28,
 ];
 
+const EYEBROW_ROT_OFFSET: [u8; 24] = [
+    26, 26, 27, 25, 26, 25, 26, 25, 28, 25, 26, 24, 27, 27, 26, 26, 25, 25, 26, 26, 27, 26, 25, 27,
+];
+
 // Found in RFL, no idea what it is
 const RFL_MAGIC_Y_OFFSET: f32 = 1.160_000_1;
 
@@ -185,7 +189,11 @@ pub struct FaceParts {
 }
 
 impl FaceParts {
-    pub fn init_glasses(info: &NxCharInfo, resolution: f32) -> [FacePart; 2] {
+    pub fn init_glasses(
+        info: &NxCharInfo,
+        resolution: f32,
+        nose_translate: [f32; 3],
+    ) -> [FacePart; 2] {
         let resolution = resolution / 64.0;
 
         let glass_y = TEX_EYE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.glass_y);
@@ -247,7 +255,7 @@ impl FaceParts {
         let eb_w = TEX_EYEBROW_BASE_W * tex_scale2dim(info.eyebrow_scale.into());
         let eb_h = TEX_EYEBROW_BASE_H * tex_scale2dim(info.eyebrow_scale.into());
         let eb_a = tex_rotate2ang(
-            (info.eyebrow_rotate + EYE_ROT_OFFSET[info.eyebrow_type as usize]).into(),
+            (info.eyebrow_rotate + EYEBROW_ROT_OFFSET[info.eyebrow_type as usize]).into(),
         );
         let eb_l = FacePart {
             x: resolution * (32.0 + eb_spacing_x),

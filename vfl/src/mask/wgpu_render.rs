@@ -1,6 +1,15 @@
-use super::{FaceParts, ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
+use super::{FacePart, FaceParts, ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
 use crate::{
-    charinfo::nx::NxCharInfo, shape_load::nx::ResourceShape, tex_load::nx::ResourceTexture,
+    charinfo::nx::NxCharInfo,
+    color::{
+        cafe::{
+            EYE_COLOR_B, EYE_COLOR_G, EYE_COLOR_R, GLASS_COLOR_R, HAIR_COLOR, MOUTH_COLOR_B,
+            MOUTH_COLOR_G, MOUTH_COLOR_R,
+        },
+        nx::{ColorModulated, modulate},
+    },
+    shape_load::nx::ResourceShape,
+    tex_load::nx::{ResourceTexture, ResourceTextureFormat, TextureElement},
 };
 use binrw::BinRead;
 use glam::{UVec2, uvec2, vec3};
@@ -10,259 +19,7 @@ use std::{error::Error, fs::File, io::BufReader};
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
 pub const FACE_OUTPUT_SIZE: u16 = 1024;
-const SHADER: &str = r"
-
-struct MvpUniform {
-    mtx: mat4x4<f32>,
-};
-@group(1) @binding(0) // 1.
-var<uniform> mvp: MvpUniform;
-
-
-struct VertexOutput {
-    @builtin(position) clip_position: vec4<f32>,
-    @location(0) tex_coords: vec2<f32>,
-}
-
-@vertex
-fn vs_main(
-    @location(0) position: vec3<f32>,
-    @location(1) tex_coords: vec2<f32>
-) -> VertexOutput {
-    var out: VertexOutput;
-    out.tex_coords = tex_coords;
-    out.clip_position = mvp.mtx * vec4<f32>(position, 1.0);
-    return out;
-}
-
-@group(0) @binding(0)
-var t_diffuse: texture_2d<f32>;
-@group(0) @binding(1)
-var s_diffuse: sampler;
-
-@fragment
-fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    let color = textureSample(t_diffuse, s_diffuse, in.tex_coords);
-
-    if (color.a == 0.0) {
-      discard;
-    }
-
-    return color;
-}
-";
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct MvpMatrixUniform {
-    mvp_matrix: [[f32; 4]; 4],
-}
-
-pub struct RenderContext {
-    size: UVec2,
-    shape: Vec<RenderShape>,
-}
-
-impl RenderContext {
-    #[allow(clippy::too_many_lines)]
-    pub fn new(
-        char: &NxCharInfo,
-        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
-    ) -> Result<Self, Box<dyn Error>> {
-        let res_shape = ResourceShape::read(file_shape)?;
-        let res_texture = ResourceTexture::read(file_texture)?;
-
-        let mask = FaceParts::init(&char, 256.0);
-        let part = mask.eye[0];
-        let tex = res_texture.eye[char.eye_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(file_texture)?.unwrap();
-
-        let eye_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        let part = mask.eye[1];
-        let tex = res_texture.eye[char.eye_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(file_texture)?.unwrap();
-
-        let eye_1_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        // brows
-
-        let part = mask.eyebrow[0];
-        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(file_texture)?.unwrap();
-
-        let eyebrow_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        let part = mask.eyebrow[1];
-        let tex = res_texture.eyebrow[char.eyebrow_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(file_texture)?.unwrap();
-
-        let eyebrow_1_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        // mouth
-        let part = mask.mouth;
-        let tex = res_texture.mouth[char.mouth_type as usize];
-
-        let (vertices, indices, mtx) = quad(
-            part.x,
-            part.y,
-            part.width,
-            part.height,
-            part.angle_deg,
-            part.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(file_texture)?.unwrap();
-
-        let mouth_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        Ok(RenderContext {
-            size: uvec2(FACE_OUTPUT_SIZE.into(), FACE_OUTPUT_SIZE.into()),
-            shape: vec![
-                eye_render_shape,
-                eye_1_render_shape,
-                eyebrow_render_shape,
-                eyebrow_1_render_shape,
-                mouth_render_shape,
-            ],
-        })
-    }
-
-    pub fn new_glasses(
-        char: &NxCharInfo,
-        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
-    ) -> Result<Self, Box<dyn Error>> {
-        let res_shape = ResourceShape::read(file_shape)?;
-        let res_texture = ResourceTexture::read(file_texture)?;
-
-        let glasses = FaceParts::init_glasses(char, 256.0);
-
-        // let mask = FaceParts::init(&char, 256.0);
-        // let part = mask[0];
-        let tex = res_texture.glass[char.glass_type as usize];
-        let mut glass_l = glasses[0];
-
-        let (vertices, indices, mtx) = quad(
-            glass_l.x,
-            glass_l.y,
-            glass_l.width,
-            glass_l.height,
-            glass_l.angle_deg,
-            glass_l.origin,
-            256.0,
-        );
-
-        let tex = tex.get_image(file_texture)?.unwrap();
-
-        let glass_l_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex.clone()),
-            mvp_matrix: mtx,
-        };
-
-        let glass_r = glasses[1];
-
-        let (vertices, indices, mtx) = quad(
-            glass_r.x,
-            glass_r.y,
-            glass_r.width,
-            glass_r.height,
-            glass_r.angle_deg,
-            glass_r.origin,
-            256.0,
-        );
-
-        let glass_r_render_shape = RenderShape {
-            vertices,
-            indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
-            mvp_matrix: mtx,
-        };
-
-        Ok(RenderContext {
-            size: uvec2(512, 256),
-            shape: vec![glass_l_render_shape, glass_r_render_shape],
-        })
-    }
-}
-
-struct RenderShape {
-    vertices: Vec<Vertex>,
-    indices: Vec<u32>,
-    tex: DynamicImage,
-    mvp_matrix: Matrix4<f32>,
-}
+const SHADER: &str = include_str!("./shader.wgsl");
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -282,6 +39,174 @@ impl Vertex {
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &Self::ATTRIBS,
         }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct TextureTransformUniform {
+    mvp_matrix: [[f32; 4]; 4],
+    channel_replacements_r: [f32; 4],
+    channel_replacements_g: [f32; 4],
+    channel_replacements_b: [f32; 4],
+    texture_type: u32,
+    pad: [u32; 3],
+}
+
+const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
+struct RenderShape {
+    vertices: Vec<Vertex>,
+    indices: Vec<u32>,
+    tex: DynamicImage,
+    mvp_matrix: Matrix4<f32>,
+    texture_type: crate::tex_load::nx::ResourceTextureFormat,
+    channel_replacements: [[f32; 4]; 3],
+}
+
+pub struct RenderContext {
+    size: UVec2,
+    shape: Vec<RenderShape>,
+}
+
+impl RenderContext {
+    #[allow(clippy::too_many_lines)]
+    pub fn new(
+        char: &NxCharInfo,
+        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+    ) -> Result<Self, Box<dyn Error>> {
+        let res_texture = ResourceTexture::read(file_texture)?;
+
+        let mask = FaceParts::init(char, 256.0);
+
+        let mut make_shape =
+            |part: FacePart, modulated: ColorModulated, tex_data: TextureElement| {
+                let (vertices, indices, mtx) = quad(
+                    part.x,
+                    part.y,
+                    part.width,
+                    part.height,
+                    part.angle_deg,
+                    part.origin,
+                    256.0,
+                );
+
+                let tex = tex_data.get_image(file_texture).unwrap().unwrap();
+
+                RenderShape {
+                    vertices,
+                    indices,
+                    tex: image::DynamicImage::ImageRgba8(tex),
+                    mvp_matrix: mtx,
+                    texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
+                    channel_replacements: modulate(modulated, char),
+                }
+            };
+
+        let left_eye = make_shape(
+            mask.eye[0],
+            ColorModulated::Eye,
+            res_texture.eye[char.eye_type as usize],
+        );
+        let right_eye = make_shape(
+            mask.eye[1],
+            ColorModulated::Eye,
+            res_texture.eye[char.eye_type as usize],
+        );
+
+        let left_brow = make_shape(
+            mask.eyebrow[0],
+            ColorModulated::Eyebrow,
+            res_texture.eyebrow[char.eyebrow_type as usize],
+        );
+        let right_brow = make_shape(
+            mask.eyebrow[1],
+            ColorModulated::Eyebrow,
+            res_texture.eyebrow[char.eyebrow_type as usize],
+        );
+
+        let mouth = make_shape(
+            mask.mouth,
+            ColorModulated::Mouth,
+            res_texture.mouth[char.mouth_type as usize],
+        );
+
+        Ok(RenderContext {
+            size: uvec2(FACE_OUTPUT_SIZE.into(), FACE_OUTPUT_SIZE.into()),
+            shape: vec![left_eye, right_eye, left_brow, right_brow, mouth],
+        })
+    }
+
+    pub fn new_glasses(
+        char: &NxCharInfo,
+        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+    ) -> Result<Self, Box<dyn Error>> {
+        let res_shape = ResourceShape::read(file_shape)?;
+        let res_texture = ResourceTexture::read(file_texture)?;
+
+        let nose_translate =
+            res_shape.face_line_transform[char.faceline_type as usize].nose_translate;
+
+        let glasses = dbg!(FaceParts::init_glasses(char, 256.0, nose_translate));
+
+        // let mask = FaceParts::init(&char, 256.0);
+        // let part = mask[0];
+        let tex_data = res_texture.glass[char.glass_type as usize];
+        let mut glass_l = glasses[0];
+
+        let (vertices, indices, mtx) = quad(
+            glass_l.x,
+            glass_l.y,
+            glass_l.width,
+            glass_l.height,
+            glass_l.angle_deg,
+            glass_l.origin,
+            256.0,
+        );
+
+        let tex = tex_data.get_image(file_texture)?.unwrap();
+
+        let glass_l_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex.clone()),
+            mvp_matrix: mtx,
+            texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
+            channel_replacements: [
+                GLASS_COLOR_R[char.glass_color as usize],
+                NON_REPLACEMENT,
+                NON_REPLACEMENT,
+            ],
+        };
+
+        let glass_r = glasses[1];
+
+        let (vertices, indices, mtx) = quad(
+            glass_r.x,
+            glass_r.y,
+            glass_r.width,
+            glass_r.height,
+            glass_r.angle_deg,
+            glass_r.origin,
+            256.0,
+        );
+
+        let glass_r_render_shape = RenderShape {
+            vertices,
+            indices,
+            tex: image::DynamicImage::ImageRgba8(tex),
+            mvp_matrix: mtx,
+            texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
+            channel_replacements: [
+                GLASS_COLOR_R[char.glass_color as usize],
+                NON_REPLACEMENT,
+                NON_REPLACEMENT,
+            ],
+        };
+
+        Ok(RenderContext {
+            size: uvec2(512, 256),
+            shape: vec![glass_l_render_shape, glass_r_render_shape],
+        })
     }
 }
 
@@ -539,7 +464,14 @@ pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage 
         });
 
         let mvp_matrix = shape.mvp_matrix.into();
-        let mvp_uniform = MvpMatrixUniform { mvp_matrix };
+        let mvp_uniform = TextureTransformUniform {
+            mvp_matrix,
+            channel_replacements_r: shape.channel_replacements[0],
+            channel_replacements_g: shape.channel_replacements[1],
+            channel_replacements_b: shape.channel_replacements[2],
+            texture_type: (Into::<u8>::into(shape.texture_type)).into(),
+            pad: Default::default(),
+        };
 
         let mvp_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("MvpMatrix Buffer"),
@@ -551,7 +483,7 @@ pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage 
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,

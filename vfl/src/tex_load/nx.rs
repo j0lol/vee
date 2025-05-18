@@ -15,7 +15,7 @@ pub struct ResourceTextureAttribute {
     alignment: u32,
     pub width: u16,
     pub height: u16,
-    format: u8,
+    pub format: u8,
     mip_count: u8,
     tile_mode: u8,
     pad: [u8; 1],
@@ -32,7 +32,7 @@ pub struct TextureElement {
 
 #[derive(IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
-enum ResourceTextureFormat {
+pub(crate) enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
     Rb = 1,      // R8B8Unorm
     Rgba = 2,    // R8B8G8A8Unorm
@@ -100,6 +100,8 @@ impl TextureElement {
         &self,
         file: &mut dyn ReadSeek,
     ) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+        let normalize_textures = false;
+
         if self.texture.width == 0 || self.texture.height == 0 {
             return Ok(None);
         }
@@ -127,13 +129,15 @@ impl TextureElement {
                 )?;
 
                 // Convert R to Rgba
-                tex_data_decoded = tex_data_decoded
-                    .iter()
-                    .map(|x| {
-                        let [_, _, w, _] = x.to_le_bytes();
-                        u32::from_le_bytes([w, w, w, w])
-                    })
-                    .collect();
+                if normalize_textures {
+                    tex_data_decoded = tex_data_decoded
+                        .iter()
+                        .map(|x| {
+                            let [_, _, w, _] = x.to_le_bytes();
+                            u32::from_le_bytes([w, w, w, w])
+                        })
+                        .collect();
+                }
             }
             ResourceTextureFormat::Bc5 => {
                 texture2ddecoder::decode_bc5(
@@ -144,13 +148,15 @@ impl TextureElement {
                 )?;
 
                 // Convert Rb to Rgba
-                tex_data_decoded = tex_data_decoded
-                    .iter()
-                    .map(|x| {
-                        let [w, a, _, _] = x.to_le_bytes();
-                        u32::from_le_bytes([w, w, w, a])
-                    })
-                    .collect();
+                if normalize_textures {
+                    tex_data_decoded = tex_data_decoded
+                        .iter()
+                        .map(|x| {
+                            let [w, a, _, _] = x.to_le_bytes();
+                            u32::from_le_bytes([w, w, w, a])
+                        })
+                        .collect();
+                }
             }
             ResourceTextureFormat::R => {
                 tex_data_decoded = tex_data

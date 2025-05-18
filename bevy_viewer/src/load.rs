@@ -1,4 +1,4 @@
-use crate::CharMesh;
+use crate::{CHAR_TRANSFORM, CharMesh};
 use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
@@ -8,7 +8,7 @@ use binrw::{BinRead, io::BufReader};
 use image::{DynamicImage, RgbaImage};
 use std::fs::File;
 use vfl::{
-    color::cafe::HAIR_COLOR,
+    color::cafe::{FACELINE_COLOR, HAIR_COLOR},
     shape_load::nx::{GenericResourceShape, ResourceShape, SHAPE_MID_DAT, Shape, ShapeData},
 };
 
@@ -96,12 +96,16 @@ pub fn shape_bundle(
     color_num: usize,
     shape: Shape,
 ) -> impl Bundle {
-    let [r, g, b, _a] = HAIR_COLOR[color_num];
+    let [r, g, b, _a] = match shape {
+        Shape::HairNormal => vfl::color::nx::linear::COMMON_COLOR[color_num],
+        Shape::FaceLine | Shape::ForeheadNormal => FACELINE_COLOR[color_num],
+        _ => [1.0, 0.0, 1.0, 1.0],
+    };
 
     (
         Mesh3d(meshes.add(load_mesh(*res, shape, hair_num).unwrap())),
-        MeshMaterial3d(materials.add(Color::srgb_from_array([r, g, b]))),
-        Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.05)),
+        MeshMaterial3d(materials.add(Color::srgb(r, g, b))),
+        CHAR_TRANSFORM,
         CharMesh,
     )
 }
@@ -117,7 +121,7 @@ pub fn shape_tex_bundle(
     (
         Mesh3d(meshes.add(load_mesh(*res, shape, hair_num).unwrap())),
         MeshMaterial3d(materials.add(StandardMaterial::from(tex))),
-        Transform::from_translation(Vec3::ZERO).with_scale(Vec3::splat(0.05)),
+        CHAR_TRANSFORM,
         CharMesh,
     )
 }

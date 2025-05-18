@@ -14,7 +14,11 @@ use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
 use char::setup_char;
 use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
 use mask::{setup_glasses, setup_mask};
-use std::f32::consts::*;
+use std::{
+    f32::consts::*,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use vfl::{
     color::cafe::HAIR_COLOR,
     shape_load::nx::{ResourceShape, Shape},
@@ -24,6 +28,8 @@ mod char;
 mod load;
 mod mask;
 
+const CHARINFO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../charline.charinfo");
+static CHAR_TRANSFORM: Transform = Transform::from_scale(Vec3::splat(0.05));
 #[derive(Component)]
 struct MainPassCamera;
 
@@ -58,10 +64,7 @@ fn main() {
             }),
             EguiBlockingPlugin,
         ))
-        .add_systems(
-            Startup,
-            (setup, setup_mask, setup_char, setup_glasses).chain(),
-        )
+        .add_systems(Startup, (setup, setup_mask, setup_char).chain())
         .add_systems(Update, (cursor_ungrab, orbit))
         .add_plugins(EguiPlugin {
             enable_multipass_for_primary_context: true,
@@ -136,14 +139,16 @@ fn setup(
         Transform::from_xyz(50.0, 50.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
         MainPassCamera,
     ));
+
+    // commands.spawn((PointLight::default(), Transform::from_xyz(0.0, 1.0, 0.0)));
     commands.spawn((
         Name::new("Light"),
         PointLight {
             shadows_enabled: false,
-            intensity: 3_000_000.0,
+            // intensity: 1_000_000.0,
             ..default()
         },
-        Transform::from_xyz(0.0, 0.0, 8.0),
+        Transform::from_xyz(0.0, 5.0, 3.0),
     ));
 
     // circular base
