@@ -4,11 +4,11 @@ use bevy::prelude::*;
 use binrw::BinRead;
 use std::{fs::File, io::BufReader};
 use vfl::color::cafe::{FACELINE_COLOR, HAIR_COLOR};
-use vfl::shape_load::nx::{ResourceShape, SHAPE_MID_DAT};
+use vfl::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
 use vfl::{
     charinfo::nx::NxCharInfo,
-    shape_load::nx::Shape,
-    tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
+    res::shape::nx::Shape,
+    res::tex::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
 };
 
 pub fn setup_char(

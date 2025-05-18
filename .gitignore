@@ -6,3 +6,4 @@
 *.png
 *.hexproj
 .DS_Store
+.idea

@@ -9,7 +9,7 @@ use image::{DynamicImage, RgbaImage};
 use std::fs::File;
 use vfl::{
     color::cafe::{FACELINE_COLOR, HAIR_COLOR},
-    shape_load::nx::{GenericResourceShape, ResourceShape, SHAPE_MID_DAT, Shape, ShapeData},
+    res::shape::nx::{GenericResourceShape, ResourceShape, SHAPE_MID_DAT, Shape, ShapeData},
 };
 
 fn shape_data_to_mesh(data: ShapeData) -> Mesh {

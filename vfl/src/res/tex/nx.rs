@@ -1,5 +1,5 @@
 use crate::{
-    shape_load::nx::ResourceCommonAttribute,
+    res::shape::nx::ResourceCommonAttribute,
     utils::{ReadSeek, inflate_bytes, read_byte_slice},
 };
 use binrw::BinRead;

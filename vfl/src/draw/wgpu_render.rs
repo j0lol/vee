@@ -1,4 +1,6 @@
-use super::{FacePart, FaceParts, ImageOrigin, TEX_SCALE_X, TEX_SCALE_Y};
+use super::TEX_SCALE_X;
+use super::TEX_SCALE_Y;
+use super::mask::{FacePart, FaceParts, ImageOrigin};
 use crate::{
     charinfo::nx::NxCharInfo,
     color::{
@@ -8,8 +10,8 @@ use crate::{
         },
         nx::{ColorModulated, modulate},
     },
-    shape_load::nx::ResourceShape,
-    tex_load::nx::{ResourceTexture, ResourceTextureFormat, TextureElement},
+    res::shape::nx::ResourceShape,
+    res::tex::nx::{ResourceTexture, ResourceTextureFormat, TextureElement},
 };
 use binrw::BinRead;
 use glam::{UVec2, uvec2, vec3};
@@ -59,7 +61,7 @@ struct RenderShape {
     indices: Vec<u32>,
     tex: DynamicImage,
     mvp_matrix: Matrix4<f32>,
-    texture_type: crate::tex_load::nx::ResourceTextureFormat,
+    texture_type: ResourceTextureFormat,
     channel_replacements: [[f32; 4]; 3],
 }
 
@@ -637,9 +639,9 @@ pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage 
 
 #[cfg(test)]
 mod tests {
-    use crate::mask::{FaceParts, NxCharInfo};
-    use crate::shape_load::nx::{ResourceShape, SHAPE_MID_DAT};
-    use crate::tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT};
+    use crate::draw::mask::FaceParts;
+    use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
+    use crate::res::tex::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT};
     use binrw::BinRead;
     use glam::uvec2;
 

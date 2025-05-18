@@ -1,7 +1,6 @@
 use crate::charinfo::nx::NxCharInfo;
 
-#[cfg(feature = "draw")]
-pub mod wgpu_render;
+use super::{TEX_SCALE_X, TEX_SCALE_Y};
 
 const fn tex_scale2dim(scale: f32) -> f32 {
     1.0 + 0.4 * scale
@@ -15,8 +14,6 @@ const fn tex_rotate2ang(rotate: i16) -> f32 {
 const fn tex_unit(x: f32) -> f32 {
     x / 64.0
 }
-const TEX_SCALE_X: f32 = 0.889_614_64;
-const TEX_SCALE_Y: f32 = 0.927_667_5;
 
 const TEX_EYE_BASE_X: f32 = tex_unit(0.0);
 const TEX_EYE_BASE_Y: f32 = 18.451_525;
@@ -53,114 +50,6 @@ const EYEBROW_ROT_OFFSET: [u8; 24] = [
 
 // Found in RFL, no idea what it is
 const RFL_MAGIC_Y_OFFSET: f32 = 1.160_000_1;
-
-// pub struct Masks {
-//     eye: [RawMaskPartsDesc; 2],
-//     eyebrow: [RawMaskPartsDesc; 2],
-//     mouth: RawMaskPartsDesc,
-//     moustache: [RawMaskPartsDesc; 2],
-//     mole: RawMaskPartsDesc,
-// }
-// impl Masks {
-//     fn calc(
-//         &self,
-//         char_info: NxCharInfo,
-//         resolution: i32,
-//         left_eye_index: i32,
-//         right_eye_index: i32,
-//     ) {
-//         unimplemented!();
-//     }
-// }
-
-// pub struct RawMaskPartsDesc {
-//     scale: Vector2<f32>,
-//     pos: Vector2<f32>,
-//     rotation_rads: f32,
-// }
-
-// impl RawMaskPartsDesc {}
-
-// struct FFLiRawMaskPartsDrawParam {}
-// struct FFLiRawMaskDrawParam {
-//     eye: [FFLiRawMaskPartsDrawParam; 2],
-//     eyebrow: [FFLiRawMaskPartsDrawParam; 2],
-//     mouth: FFLiRawMaskPartsDrawParam,
-//     moustache: [FFLiRawMaskPartsDrawParam; 2],
-//     mole: FFLiRawMaskPartsDrawParam,
-//     fill: FFLiRawMaskPartsDrawParam,
-// }
-
-// struct GX2Texture {}
-// struct FFLiRawMaskTextureDesc {
-//     eye: [GX2Texture; 2],
-//     eyebrow: [GX2Texture; 2],
-//     mouth: GX2Texture,
-//     moustache: [GX2Texture; 2],
-//     mole: GX2Texture,
-// }
-
-// //void FFLiInitDrawParamRawMask(FFLiRawMaskDrawParam* pDrawParam, const FFLiCharInfo* pCharInfo, s32 resolution, s32 leftEyeIndex, s32 rightEyeIndex, const FFLiRawMaskTextureDesc* pDesc, FFLiBufferAllocator* pAllocator);
-// fn init_draw_param_raw_mask(
-//     draw_parameters: (),
-//     char_info: NxCharInfo,
-//     resolution: i32,
-//     left_eye_index: i32,
-//     right_eye_index: i32,
-//     texture_desc: (),
-//     allocator: (),
-// ) {
-//     unimplemented!()
-// }
-
-// //void FFLiInvalidateRawMask(FFLiRawMaskDrawParam* pDrawParam);
-// fn invalidate_raw_mask(draw_parameters: ()) {
-//     unimplemented!()
-// }
-
-// //void FFLiDrawRawMask(const FFLiRawMaskDrawParam* pDrawParam, const FFLiShaderCallback* pCallback);
-// fn draw_raw_mask(draw_parameters: (), shader_callback: ()) {
-//     unimplemented!()
-// }
-
-// type Mat34 = Matrix3x4<f32>;
-
-// pub fn transformation_matrix(
-//     scale: Vector2<f32>,
-//     translation: Vector2<f32>,
-//     rotation_rads: f32,
-// ) -> Matrix4<f32> {
-//     let rotation = Rotation3::from_axis_angle(&Vector3::z_axis(), rotation_rads);
-//     let rotation = rotation.matrix();
-
-//     let scale = Scale2::new(scale.x, scale.y).to_homogeneous();
-
-//     let rot_and_scale = rotation * scale;
-
-//     let translation = matrix![translation.x; translation.y; 1.0];
-
-//     let one = matrix![1.0];
-//     let mtx = stack![rot_and_scale, translation; 0, one];
-
-//     mtx
-// }
-
-// /// CalcMVMatrix
-// pub fn calc_mv_matrix(p_mv_matrix: &mut Mat34, p_desc: &RawMaskPartsDesc) {
-//     // Mat34 m;
-
-//     // MAT34Scale(pMVMatrix, pDesc->scale.x, pDesc->scale.y, 1.0f);
-//     p_mv_matrix.row_mut(0).scale_mut(p_desc.scale.x);
-//     p_mv_matrix.row_mut(1).scale_mut(p_desc.scale.y);
-
-//     let transform_matrix = transformation_matrix(
-//         Vector2::<f32>::new(0.889_614_64, 0.927_667_5),
-//         p_desc.pos,
-//         p_desc.rotation_rads,
-//     );
-
-//     *p_mv_matrix *= transform_matrix;
-// }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImageOrigin {
@@ -335,7 +224,7 @@ impl FaceParts {
 
 #[cfg(test)]
 mod tests {
-    use crate::shape_load::nx::{ResourceShape, SHAPE_MID_DAT};
+    use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
     use binrw::BinRead;
     use std::error::Error;
     use std::{fs::File, io::BufReader};

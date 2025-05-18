@@ -11,9 +11,9 @@ use binrw::BinRead;
 use std::{fs::File, io::BufReader, path::PathBuf, str::FromStr};
 use vfl::{
     charinfo::nx::NxCharInfo,
-    mask::wgpu_render::{FACE_OUTPUT_SIZE, RenderContext, render_context_wgpu},
-    shape_load::nx::{ResourceShape, SHAPE_MID_DAT, Shape},
-    tex_load::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
+    draw::wgpu_render::{FACE_OUTPUT_SIZE, RenderContext, render_context_wgpu},
+    res::shape::nx::{ResourceShape, SHAPE_MID_DAT, Shape},
+    res::tex::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
 };
 
 use crate::{

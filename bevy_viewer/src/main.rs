@@ -21,7 +21,7 @@ use std::{
 };
 use vfl::{
     color::cafe::HAIR_COLOR,
-    shape_load::nx::{ResourceShape, Shape},
+    res::shape::nx::{ResourceShape, Shape},
 };
 
 mod char;
