@@ -27,13 +27,14 @@ pub use bytemuck::cast_slice;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
+    pub position: [f32; 3],
+    pub tex_coords: [f32; 2],
+    pub normal: [f32; 3],
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+    const ATTRIBS: [wgpu::VertexAttribute; 3] =
+        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x3];
 
     pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
@@ -69,6 +70,14 @@ pub struct RenderShape {
 pub struct RenderContext {
     pub size: UVec2,
     pub shape: Vec<RenderShape>,
+}
+impl RenderContext {
+    pub fn from_shapes(shape: Vec<RenderShape>) -> RenderContext {
+        RenderContext {
+            size: uvec2(FACE_OUTPUT_SIZE.into(), FACE_OUTPUT_SIZE.into()),
+            shape,
+        }
+    }
 }
 
 impl RenderContext {
@@ -285,18 +294,22 @@ fn quad(
             Vertex {
                 position: v2(1.0 + base_x, -0.5),
                 tex_coords: [s0, 0.0],
+                normal: [0.0, 0.0, 0.0],
             },
             Vertex {
                 position: v2(1.0 + base_x, 0.5),
                 tex_coords: [s0, 1.0],
+                normal: [0.0, 0.0, 0.0],
             },
             Vertex {
                 position: v2(base_x, 0.5),
                 tex_coords: [s1, 1.0],
+                normal: [0.0, 0.0, 0.0],
             },
             Vertex {
                 position: v2(base_x, -0.5),
                 tex_coords: [s1, 0.0],
+                normal: [0.0, 0.0, 0.0],
             },
         ],
         vec![0, 1, 2, 0, 2, 3],

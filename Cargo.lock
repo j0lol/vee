@@ -2660,6 +2660,7 @@ version = "0.30.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b46b9ca4690308844c644e7c634d68792467260e051c8543e0c7871662b3ba7"
 dependencies = [
+ "bytemuck",
  "mint",
 ]
 
@@ -3306,6 +3307,9 @@ dependencies = [
 name = "lightweight_viewer"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
+ "glam 0.30.3",
+ "image 0.25.6",
  "pollster",
  "vfl",
  "wgpu 25.0.0",

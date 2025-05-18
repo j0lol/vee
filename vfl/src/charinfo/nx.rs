@@ -1,12 +1,12 @@
 pub use binrw::{BinRead, NullWideString, binrw};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[binrw]
 #[brw(little)]
 pub struct UuidVer4 {
     idc: [u8; 16],
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[binrw]
 #[brw(little, assert(nickname.len() <= 22))]
 pub struct NxCharInfo {

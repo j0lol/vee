@@ -13,6 +13,7 @@ var<uniform> mvp: TransformUniform;
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) tex_coords: vec2<f32>,
+    @location(1) thirdthing: vec4<f32>,
 }
 
 @vertex

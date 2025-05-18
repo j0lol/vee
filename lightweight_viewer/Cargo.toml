@@ -7,4 +7,7 @@ edition = "2024"
 pollster = "0.4"
 wgpu = "25.0.0"
 winit = { version = "0.30.8", features = ["android-native-activity"] }
-vfl = { path = "../vfl" }
+vfl = { path = "../vfl", features = ["res", "draw"] }
+glam = { version = "0.30.3", features = ["bytemuck"] }
+bytemuck = "1.23.0"
+image = "0.25.6"
