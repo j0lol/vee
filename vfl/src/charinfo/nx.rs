@@ -1,4 +1,4 @@
-use binrw::{NullWideString, binrw};
+pub use binrw::{BinRead, NullWideString, binrw};
 
 #[derive(Debug)]
 #[binrw]

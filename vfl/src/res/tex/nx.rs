@@ -32,7 +32,7 @@ pub struct TextureElement {
 
 #[derive(IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
-pub(crate) enum ResourceTextureFormat {
+pub enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
     Rb = 1,      // R8B8Unorm
     Rgba = 2,    // R8B8G8A8Unorm

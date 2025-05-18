@@ -20,12 +20,13 @@ use nalgebra::Matrix4;
 use std::{error::Error, fs::File, io::BufReader};
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
-pub const FACE_OUTPUT_SIZE: u16 = 1024;
-const SHADER: &str = include_str!("./shader.wgsl");
+pub const FACE_OUTPUT_SIZE: u16 = 512;
+pub const SHADER: &str = include_str!("./shader.wgsl");
+pub use bytemuck::cast_slice;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
+pub struct Vertex {
     position: [f32; 3],
     tex_coords: [f32; 2],
 }
@@ -34,7 +35,7 @@ impl Vertex {
     const ATTRIBS: [wgpu::VertexAttribute; 2] =
         wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2];
 
-    fn desc() -> wgpu::VertexBufferLayout<'static> {
+    pub fn desc() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
@@ -46,28 +47,28 @@ impl Vertex {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct TextureTransformUniform {
-    mvp_matrix: [[f32; 4]; 4],
-    channel_replacements_r: [f32; 4],
-    channel_replacements_g: [f32; 4],
-    channel_replacements_b: [f32; 4],
-    texture_type: u32,
-    pad: [u32; 3],
+pub struct TextureTransformUniform {
+    pub mvp_matrix: [[f32; 4]; 4],
+    pub channel_replacements_r: [f32; 4],
+    pub channel_replacements_g: [f32; 4],
+    pub channel_replacements_b: [f32; 4],
+    pub texture_type: u32,
+    pub pad: [u32; 3],
 }
 
 const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
-struct RenderShape {
-    vertices: Vec<Vertex>,
-    indices: Vec<u32>,
-    tex: DynamicImage,
-    mvp_matrix: Matrix4<f32>,
-    texture_type: ResourceTextureFormat,
-    channel_replacements: [[f32; 4]; 3],
+pub struct RenderShape {
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u32>,
+    pub tex: DynamicImage,
+    pub mvp_matrix: Matrix4<f32>,
+    pub texture_type: ResourceTextureFormat,
+    pub channel_replacements: [[f32; 4]; 3],
 }
 
 pub struct RenderContext {
-    size: UVec2,
-    shape: Vec<RenderShape>,
+    pub size: UVec2,
+    pub shape: Vec<RenderShape>,
 }
 
 impl RenderContext {
@@ -644,6 +645,7 @@ mod tests {
     use crate::res::tex::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT};
     use binrw::BinRead;
     use glam::uvec2;
+    use image_compare::Algorithm;
 
     use super::*;
     use std::{error::Error, fs::File, io::BufReader};
@@ -665,8 +667,49 @@ mod tests {
             &char,
             (&mut tex_shape, &mut tex_file),
         )?));
+        let image = image.flipv();
 
-        image.save("image.png")?;
+        image.save(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/test_output/mask-rendered.png"
+        ))?;
+
+        let reference_image = image::open(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/test_data/jasmine-mask.png"
+        ))
+        .unwrap();
+
+        let similarity = image_compare::rgb_hybrid_compare(
+            &image.clone().into_rgb8(),
+            &reference_image.clone().into_rgb8(),
+        )
+        .expect("wrong size!");
+
+        similarity
+            .image
+            .to_color_map()
+            .save(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/test_output/mask-similarity.png"
+            ))
+            .unwrap();
+
+        let similarity = image_compare::gray_similarity_structure(
+            &Algorithm::MSSIMSimple,
+            &image.into_luma8(),
+            &reference_image.into_luma8(),
+        )
+        .expect("wrong size!");
+
+        similarity
+            .image
+            .to_color_map()
+            .save(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/test_output/mask-similarity-grey.png"
+            ))
+            .unwrap();
 
         Ok(())
     }

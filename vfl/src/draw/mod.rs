@@ -1,6 +1,7 @@
 #[cfg(feature = "draw")]
 pub mod wgpu_render;
 
+pub mod faceline;
 pub mod mask;
 
 pub const TEX_SCALE_X: f32 = 0.889_614_64;

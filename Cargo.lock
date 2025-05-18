@@ -3022,6 +3022,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "image-compare"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96cd73af13ae2e7220a1c02fe7d6bb53be50612ba7fabbb5c88e7753645f1f3c"
+dependencies = [
+ "image 0.25.6",
+ "itertools 0.12.1",
+ "rayon",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "image-webp"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3288,6 +3300,16 @@ checksum = "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
 dependencies = [
  "libc",
  "pkg-config",
+]
+
+[[package]]
+name = "lightweight_viewer"
+version = "0.1.0"
+dependencies = [
+ "pollster",
+ "vfl",
+ "wgpu 25.0.0",
+ "winit",
 ]
 
 [[package]]
@@ -5546,6 +5568,7 @@ dependencies = [
  "glam 0.30.3",
  "half",
  "image 0.25.6",
+ "image-compare",
  "itertools 0.14.0",
  "mesh-tools",
  "mint",

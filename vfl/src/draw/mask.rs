@@ -68,6 +68,7 @@ pub struct FacePart {
     pub origin: ImageOrigin,
 }
 
+/// The positioning of all parts of the face on the mask.
 #[derive(Clone, Copy, Debug)]
 pub struct FaceParts {
     pub eye: [FacePart; 2],

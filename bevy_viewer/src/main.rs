@@ -28,7 +28,7 @@ mod char;
 mod load;
 mod mask;
 
-const CHARINFO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../charline.charinfo");
+const CHARINFO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../soyun.charinfo");
 static CHAR_TRANSFORM: Transform = Transform::from_scale(Vec3::splat(0.05));
 #[derive(Component)]
 struct MainPassCamera;
