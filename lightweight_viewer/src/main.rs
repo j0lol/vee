@@ -7,7 +7,7 @@ use vfl::{
     },
     res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
 };
-use wgpu::{TexelCopyTextureInfo, TextureFormat, util::DeviceExt};
+use wgpu::{Backends, TexelCopyTextureInfo, TextureFormat, util::DeviceExt};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -37,7 +37,10 @@ struct State {
 
 impl State {
     async fn new(window: Arc<Window>) -> State {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: Backends::PRIMARY | Backends::SECONDARY,
+            ..Default::default()
+        });
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions::default())
             .await
