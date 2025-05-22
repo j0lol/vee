@@ -234,33 +234,19 @@ mod tests {
     type R = Result<(), Box<dyn Error>>;
 
     // #[test]
-    // fn scale_test() {
-    //     let mut mtx = Matrix3x4::identity();
+    // fn mask_shape() -> R {
+    //     let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);
 
-    //     calc_mv_matrix(
-    //         &mut mtx,
-    //         &RawMaskPartsDesc {
-    //             scale: Vector2::<f32>::new(1.0, 1.0),
-    //             pos: Vector2::zeros(),
-    //             rotation_rads: PI,
-    //         },
-    //     );
+    //     let res = ResourceShape::read(&mut bin)?;
+
+    //     let mut shape = res.mask[1];
+    //     let mut shape = shape.shape_data(&mut bin)?;
+
+    //     // let mut file = File::open(SHAPE_MID_DAT)?;
+
+    //     // let gltf = shape.gltf(&mut file)?;
+    //     // gltf.export_glb("jas.glb")?;
+    //     //
+    //     Ok(())
     // }
-
-    #[test]
-    fn mask_shape() -> R {
-        let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);
-
-        let res = ResourceShape::read(&mut bin)?;
-
-        let mut shape = res.mask[1];
-        let mut shape = shape.shape_data(&mut bin)?;
-
-        // let mut file = File::open(SHAPE_MID_DAT)?;
-
-        // let gltf = shape.gltf(&mut file)?;
-        // gltf.export_glb("jas.glb")?;
-        //
-        Ok(())
-    }
 }

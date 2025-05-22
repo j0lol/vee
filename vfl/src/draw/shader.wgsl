@@ -3,7 +3,7 @@ struct TransformUniform {
     color_r: vec4<f32>,
     color_g: vec4<f32>,
     color_b: vec4<f32>,
-    texture_format: u32,
+    modulation_mode: u32,
 };
 
 @group(1) @binding(0) // 1.
@@ -23,7 +23,12 @@ fn vs_main(
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coords = tex_coords;
-    out.clip_position = mvp.mtx * vec4<f32>(position, 1.0);
+    // if mvp.modulation_mode == 1 {
+    //     // Ignore matrix with direct texture output.
+    //     out.clip_position = vec4<f32>(position, 1.0);
+    // } else {
+        out.clip_position = mvp.mtx * vec4<f32>(position, 1.0);
+    // }
     return out;
 }
 
@@ -40,50 +45,61 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //    discard;
     // }
 
-    // R = 0,       // R8Unorm (Ffl Name)
-    // Rb = 1,      // R8B8Unorm
-    // Rgba = 2,    // R8B8G8A8Unorm
-    // Bc4 = 3,     // Bc4Unorm (Compressed R)
-    // Bc5 = 4,     // Bc5Unorm (Compressed Rb)
-    // Bc7 = 5,     // Bc7Unorm (Compressed Rgba)
-    // Astc4x4 = 6, // Astc4x4Unorm (Compressed Rgba)
+    // enum vfl::color::nx::ModulationMode {
+    //     SingleColor = 0,
+    //     DirectTexture = 1,
+    //     LayeredRgbTexture = 2,
+    //     AlphaTexture = 3,
+    //     LuminanceAlphaTexture = 4,
+    // }
 
-    // Luminance Alpha ∈ [1,4]
-    // Rgba ∈ [2,5,6]
-    // Alpha ∈ [0,3]
-
-    if (mvp.texture_format == 1 || mvp.texture_format == 4) {
-        return normalize_lum_alpha(color);
-    } else if (mvp.texture_format == 2 || mvp.texture_format == 5 || mvp.texture_format == 6) {
-        return normalize_rgba(color);
-    } else if (mvp.texture_format == 0 || mvp.texture_format == 3) {
-        return normalize_alpha(color);
+    if mvp.modulation_mode == 0 {
+        return modulate_single_color(color);
+    } else if mvp.modulation_mode == 1 {
+        return modulate_direct_texture(color);
+    } else if mvp.modulation_mode == 2 {
+        return modulate_rgba(color);
+    } else if mvp.modulation_mode == 3 {
+        return modulate_alpha(color);
+    } else if mvp.modulation_mode == 4 {
+        return modulate_lum_alpha(color);
     } else {
-        return vec4f(0.4, 0.2, 0.6, 1.0); // Rebecca Purple
+        // OOB access, return RebeccaPurple
+        return vec4f(0.4, 0.2, 0.6, 1.0);
     }
+}
 
+// Two trivial cases
+fn modulate_single_color(color: vec4f) -> vec4f {
+    return mvp.color_r;
+}
+
+fn modulate_direct_texture(color: vec4f) -> vec4f {
     return color;
 }
 
-fn normalize_rgba(color: vec4f) -> vec4f {
+// Texture passes us alpha information, we fill in the rest of the color.
+// [a,0,0,0] -> [r,g,b,a]
+fn modulate_alpha(color: vec4f) -> vec4f {
+    let repl = mvp.color_r;
+
+    return vec4(repl.rgb, repl.a * color.r);
+}
+
+// Texture passes luminance + alpha, we colorize it.
+// [l,a,0,0] -> [r,g,b,a]
+fn modulate_lum_alpha(color: vec4f) -> vec4f {
+    let repl_lum = mvp.color_r;
+
+    return vec4(color.g * repl_lum.rgb, repl_lum.a * color.r);
+}
+
+
+fn modulate_rgba(color: vec4f) -> vec4f {
     let repl_r = mvp.color_r;
     let repl_g = mvp.color_g;
     let repl_b = mvp.color_b;
 
     return vec4f(color.r * repl_r.rgb + color.g * repl_g.rgb + color.b * repl_b.rgb, color.a * repl_r.a);
 
-}
-
-// Texture passes luminance + alpha, we colorize it.
-fn normalize_lum_alpha(color: vec4f) -> vec4f {
-    let repl_lum = mvp.color_r;
-
-    return vec4(color.g * repl_lum.rgb, repl_lum.a * color.r);
-}
-
-// Texture passes us alpha information, we fill in the rest of the color.
-fn normalize_alpha(color: vec4f) -> vec4f {
-    let repl = mvp.color_r;
-
-    return vec4(repl.rgb, repl.a * color.r);
 }

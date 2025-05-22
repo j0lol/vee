@@ -1,6 +1,9 @@
 use super::TEX_SCALE_X;
 use super::TEX_SCALE_Y;
 use super::mask::{FacePart, ImageOrigin, MaskFaceParts};
+use super::render_2d::Rendered2dShape;
+use super::render_3d::ProgramState;
+use super::render_3d::Rendered3dShape;
 use crate::{
     charinfo::nx::NxCharInfo,
     color::{
@@ -14,11 +17,16 @@ use crate::{
     res::tex::nx::{ResourceTexture, ResourceTextureFormat, TextureElement},
 };
 use binrw::BinRead;
+use camera::Camera;
+use camera::CameraUniform;
+use glam::Vec3;
 use glam::{UVec2, uvec2, vec3};
 use image::{DynamicImage, RgbaImage};
 use nalgebra::Matrix4;
+use std::f32::consts::FRAC_PI_2;
 use std::f32::consts::PI;
 use std::{error::Error, fs::File, io::BufReader};
+use wgpu::CommandEncoder;
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
@@ -59,23 +67,23 @@ pub struct TextureTransformUniform {
 }
 
 const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
-#[derive(Debug)]
-#[deprecated]
-pub struct RenderShape {
-    pub vertices: Vec<Vertex>,
-    pub indices: Vec<u32>,
-    pub tex: DynamicImage,
-    pub mvp_matrix: Matrix4<f32>,
-    pub texture_type: ResourceTextureFormat,
-    pub channel_replacements: [[f32; 4]; 3],
-}
+// #[derive(Debug)]
+// #[deprecated]
+// pub struct RenderShape {
+//     pub vertices: Vec<Vertex>,
+//     pub indices: Vec<u32>,
+//     pub tex: DynamicImage,
+//     pub mvp_matrix: Matrix4<f32>,
+//     pub texture_type: ResourceTextureFormat,
+//     pub channel_replacements: [[f32; 4]; 3],
+// }
 
 pub struct RenderContext {
     pub size: UVec2,
-    pub shape: Vec<RenderShape>,
+    pub shape: Vec<Rendered2dShape>,
 }
 impl RenderContext {
-    pub fn from_shapes(shape: Vec<RenderShape>) -> RenderContext {
+    pub fn from_shapes(shape: Vec<Rendered2dShape>) -> RenderContext {
         RenderContext {
             size: uvec2(FACE_OUTPUT_SIZE.into(), FACE_OUTPUT_SIZE.into()),
             shape,
@@ -87,10 +95,10 @@ impl RenderContext {
     #[allow(clippy::too_many_lines)]
     pub fn new(
         char: &NxCharInfo,
-        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+        res_texture: &ResourceTexture,
+        res_shape: &ResourceShape,
+        file_texture: &Vec<u8>,
     ) -> Result<Self, Box<dyn Error>> {
-        let res_texture = ResourceTexture::read(file_texture)?;
-
         let mask = MaskFaceParts::init(char, 256.0);
 
         let mut make_shape =
@@ -107,13 +115,13 @@ impl RenderContext {
 
                 let tex = tex_data.get_image(file_texture).unwrap().unwrap();
 
-                RenderShape {
+                Rendered2dShape {
                     vertices,
                     indices,
                     tex: image::DynamicImage::ImageRgba8(tex),
                     mvp_matrix: mtx,
-                    texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
-                    channel_replacements: modulate(modulated, char),
+                    modulation: modulate(modulated, char),
+                    opaque: None,
                 }
             };
 
@@ -154,10 +162,10 @@ impl RenderContext {
     #[allow(clippy::too_many_lines)]
     pub fn new_faceline(
         char: &NxCharInfo,
-        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+        res_texture: &ResourceTexture,
+        res_shape: &ResourceShape,
+        file_texture: &Vec<u8>,
     ) -> Result<Self, Box<dyn Error>> {
-        let res_texture = ResourceTexture::read(file_texture)?;
-
         let mask = MaskFaceParts::init(char, 256.0);
         let makeup = char.faceline_make;
 
@@ -175,13 +183,13 @@ impl RenderContext {
 
                 let tex = tex_data.get_image(file_texture).unwrap().unwrap();
 
-                RenderShape {
+                Rendered2dShape {
                     vertices,
                     indices,
                     tex: image::DynamicImage::ImageRgba8(tex),
                     mvp_matrix: mtx,
-                    texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
-                    channel_replacements: modulate(modulated, char),
+                    modulation: modulate(modulated, char),
+                    opaque: None,
                 }
             };
 
@@ -199,11 +207,10 @@ impl RenderContext {
 
     pub fn new_glasses(
         char: &NxCharInfo,
-        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+        res_texture: &ResourceTexture,
+        res_shape: &ResourceShape,
+        file_texture: &Vec<u8>,
     ) -> Result<Self, Box<dyn Error>> {
-        let res_shape = ResourceShape::read(file_shape)?;
-        let res_texture = ResourceTexture::read(file_texture)?;
-
         let nose_translate =
             res_shape.face_line_transform[char.faceline_type as usize].nose_translate;
 
@@ -226,17 +233,13 @@ impl RenderContext {
 
         let tex = tex_data.get_image(file_texture)?.unwrap();
 
-        let glass_l_render_shape = RenderShape {
+        let glass_l_render_shape = Rendered2dShape {
             vertices,
             indices,
             tex: image::DynamicImage::ImageRgba8(tex.clone()),
             mvp_matrix: mtx,
-            texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
-            channel_replacements: [
-                GLASS_COLOR_R[char.glass_color as usize],
-                NON_REPLACEMENT,
-                NON_REPLACEMENT,
-            ],
+            modulation: modulate(ColorModulated::Glass, &char),
+            opaque: None,
         };
 
         let glass_r = glasses[1];
@@ -251,17 +254,13 @@ impl RenderContext {
             256.0,
         );
 
-        let glass_r_render_shape = RenderShape {
+        let glass_r_render_shape = Rendered2dShape {
             vertices,
             indices,
             tex: image::DynamicImage::ImageRgba8(tex),
             mvp_matrix: mtx,
-            texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
-            channel_replacements: [
-                GLASS_COLOR_R[char.glass_color as usize],
-                NON_REPLACEMENT,
-                NON_REPLACEMENT,
-            ],
+            modulation: modulate(ColorModulated::Glass, &char),
+            opaque: None,
         };
 
         Ok(RenderContext {
@@ -371,6 +370,201 @@ pub fn quad(
         vec![0, 1, 2, 0, 2, 3],
         mvp_mtx,
     )
+}
+
+pub struct HeadlessRenderer {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    camera_bgl: wgpu::BindGroupLayout,
+    camera_bg: wgpu::BindGroup,
+    surface_fmt: wgpu::TextureFormat,
+    depth_texture: texture::Texture,
+}
+
+impl ProgramState for HeadlessRenderer {
+    fn device(&self) -> wgpu::Device {
+        self.device.clone()
+    }
+
+    fn queue(&self) -> wgpu::Queue {
+        self.queue.clone()
+    }
+
+    fn camera_bgl(&self) -> &wgpu::BindGroupLayout {
+        &self.camera_bgl
+    }
+
+    fn camera_bg(&self) -> &wgpu::BindGroup {
+        &self.camera_bg
+    }
+
+    fn surface_fmt(&self) -> wgpu::TextureFormat {
+        self.surface_fmt
+    }
+
+    fn depth_texture(&self) -> &texture::Texture {
+        &self.depth_texture
+    }
+}
+
+impl Default for HeadlessRenderer {
+    fn default() -> HeadlessRenderer {
+        HeadlessRenderer::new()
+    }
+}
+impl HeadlessRenderer {
+    pub fn new() -> HeadlessRenderer {
+        pollster::block_on(HeadlessRenderer::async_new())
+    }
+    async fn async_new() -> HeadlessRenderer {
+        const SIZE: UVec2 = uvec2(512, 512);
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                compatible_surface: None,
+                force_fallback_adapter: false,
+            })
+            .await
+            .unwrap();
+        let (device, queue) = adapter
+            .request_device(&DeviceDescriptor::default())
+            .await
+            .unwrap();
+
+        // let surface = instance.create_surface(window.clone()).unwrap();
+        // let cap = surface.get_capabilities(&adapter);
+        // let surface_fmt = cap.formats[0];
+        let surface_fmt = wgpu::TextureFormat::Bgra8Unorm;
+
+        let depth_texture = texture::Texture::create_depth_texture(&device, &SIZE, "depth_texture");
+
+        let camera = Camera {
+            eye: (0.0, 25.0, 100.0).into(),
+            target: (0.0, 25.0, 0.0).into(),
+            up: Vec3::Y,
+            aspect: SIZE.x as f32 / SIZE.y as f32,
+            fov_y_radians: FRAC_PI_2,
+            znear: 0.1,
+            zfar: 10000.0,
+        };
+
+        let mut camera_uniform = CameraUniform::new();
+        camera_uniform.update_view_proj(&camera);
+
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[camera_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let camera_bgl = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("camera_bind_group_layout"),
+        });
+
+        let camera_bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_bgl,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
+            label: Some("camera_bind_group"),
+        });
+
+        HeadlessRenderer {
+            device,
+            queue,
+            camera_bgl,
+            camera_bg,
+            surface_fmt,
+            depth_texture,
+        }
+    }
+
+    pub fn output_texture(
+        &mut self,
+        texture: &texture::Texture,
+        mut encoder: CommandEncoder,
+    ) -> DynamicImage {
+        pollster::block_on(async {
+            let u32_size = std::mem::size_of::<u32>() as u32;
+            let output_buffer_size = wgpu::BufferAddress::from(
+                u32_size * texture.texture.size().width * texture.texture.size().height,
+            );
+            let output_buffer_desc = wgpu::BufferDescriptor {
+                size: output_buffer_size,
+                usage: wgpu::BufferUsages::COPY_DST
+                        // this tells wpgu that we want to read this buffer from the cpu
+                        | wgpu::BufferUsages::MAP_READ,
+                label: None,
+                mapped_at_creation: false,
+            };
+            let output_buffer = self.device.create_buffer(&output_buffer_desc);
+
+            encoder.copy_texture_to_buffer(
+                wgpu::TexelCopyTextureInfo {
+                    aspect: wgpu::TextureAspect::All,
+                    texture: &texture.texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                },
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &output_buffer,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(u32_size * texture.texture.size().width),
+                        rows_per_image: Some(texture.texture.size().height),
+                    },
+                },
+                texture.texture.size(),
+            );
+
+            self.queue.submit(Some(encoder.finish()));
+
+            let mut image = None;
+            // We need to scope the mapping variables so that we can
+            // unmap the buffer
+            {
+                let buffer_slice = output_buffer.slice(..);
+
+                // NOTE: We have to create the mapping THEN device.poll() before await
+                // the future. Otherwise the application will freeze.
+                let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
+                buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
+                    tx.send(result).unwrap();
+                });
+                self.device.poll(wgpu::PollType::Wait).unwrap();
+                rx.receive().await.unwrap().unwrap();
+
+                let data = &buffer_slice.get_mapped_range()[..];
+
+                use image::{ImageBuffer, Rgba};
+                let buffer: RgbaImage = ImageBuffer::<Rgba<u8>, _>::from_raw(
+                    texture.texture.size().width,
+                    texture.texture.size().height,
+                    data.to_owned(),
+                )
+                .unwrap();
+                image = Some(DynamicImage::ImageRgba8(buffer));
+            }
+            output_buffer.unmap();
+
+            image.unwrap()
+        })
+    }
 }
 
 #[deprecated]
@@ -539,10 +733,10 @@ pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage 
         let mvp_matrix = shape.mvp_matrix.into();
         let mvp_uniform = TextureTransformUniform {
             mvp_matrix,
-            channel_replacements_r: shape.channel_replacements[0],
-            channel_replacements_g: shape.channel_replacements[1],
-            channel_replacements_b: shape.channel_replacements[2],
-            texture_type: (Into::<u8>::into(shape.texture_type)).into(),
+            channel_replacements_r: shape.modulation.channels[0],
+            channel_replacements_g: shape.modulation.channels[1],
+            channel_replacements_b: shape.modulation.channels[2],
+            texture_type: (Into::<u8>::into(shape.modulation.mode)).into(),
             pad: Default::default(),
         };
 
@@ -852,7 +1046,8 @@ pub mod texture {
                 dimension: wgpu::TextureDimension::D2,
                 format: TextureFormat::Bgra8UnormSrgb,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                       | wgpu::TextureUsages::TEXTURE_BINDING,
+                       | wgpu::TextureUsages::TEXTURE_BINDING
+                       | wgpu::TextureUsages::COPY_SRC,
                 view_formats: &[],
             };
             let texture = device.create_texture(&desc);
@@ -894,65 +1089,105 @@ mod tests {
 
     type R = Result<(), Box<dyn Error>>;
 
-    #[test]
-    #[allow(clippy::too_many_lines)]
-    fn test_render() -> R {
-        let mut tex_file = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
-        let mut tex_shape = BufReader::new(File::open(SHAPE_MID_DAT)?);
+    // #[test]
+    // #[allow(clippy::too_many_lines)]
+    // fn test_render() -> R {
+    //     let mut tex_file = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
+    //     let mut tex_shape = BufReader::new(File::open(SHAPE_MID_DAT)?);
 
-        let mut char =
-            File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../Jasmine.charinfo")).unwrap();
-        let char = NxCharInfo::read(&mut char).unwrap();
+    //     let mut char =
+    //         File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../Jasmine.charinfo")).unwrap();
+    //     let char = NxCharInfo::read(&mut char).unwrap();
 
-        let image = pollster::block_on(render_context_wgpu(RenderContext::new(
-            // &FaceParts::init(&char, 256.0),
-            &char,
-            (&mut tex_shape, &mut tex_file),
-        )?));
-        let image = image.flipv();
+    //     let image = pollster::block_on(render_context_wgpu(RenderContext::new(
+    //         // &FaceParts::init(&char, 256.0),
+    //         &char,
+    //         (&mut tex_shape, &mut tex_file),
+    //     )?));
+    //     let image = image.flipv();
 
-        image.save(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/test_output/mask-rendered.png"
-        ))?;
+    //     image.save(concat!(
+    //         env!("CARGO_MANIFEST_DIR"),
+    //         "/test_output/mask-rendered.png"
+    //     ))?;
 
-        let reference_image = image::open(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/test_data/jasmine-mask.png"
-        ))
-        .unwrap();
+    //     let reference_image = image::open(concat!(
+    //         env!("CARGO_MANIFEST_DIR"),
+    //         "/test_data/jasmine-mask.png"
+    //     ))
+    //     .unwrap();
 
-        let similarity = image_compare::rgb_hybrid_compare(
-            &image.clone().into_rgb8(),
-            &reference_image.clone().into_rgb8(),
-        )
-        .expect("wrong size!");
+    //     let similarity = image_compare::rgb_hybrid_compare(
+    //         &image.clone().into_rgb8(),
+    //         &reference_image.clone().into_rgb8(),
+    //     )
+    //     .expect("wrong size!");
 
-        similarity
-            .image
-            .to_color_map()
-            .save(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/test_output/mask-similarity.png"
-            ))
-            .unwrap();
+    //     similarity
+    //         .image
+    //         .to_color_map()
+    //         .save(concat!(
+    //             env!("CARGO_MANIFEST_DIR"),
+    //             "/test_output/mask-similarity.png"
+    //         ))
+    //         .unwrap();
 
-        let similarity = image_compare::gray_similarity_structure(
-            &Algorithm::MSSIMSimple,
-            &image.into_luma8(),
-            &reference_image.into_luma8(),
-        )
-        .expect("wrong size!");
+    //     let similarity = image_compare::gray_similarity_structure(
+    //         &Algorithm::MSSIMSimple,
+    //         &image.into_luma8(),
+    //         &reference_image.into_luma8(),
+    //     )
+    //     .expect("wrong size!");
 
-        similarity
-            .image
-            .to_color_map()
-            .save(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/test_output/mask-similarity-grey.png"
-            ))
-            .unwrap();
+    //     similarity
+    //         .image
+    //         .to_color_map()
+    //         .save(concat!(
+    //             env!("CARGO_MANIFEST_DIR"),
+    //             "/test_output/mask-similarity-grey.png"
+    //         ))
+    //         .unwrap();
 
-        Ok(())
+    //     Ok(())
+    // }
+}
+
+mod camera {
+    use glam::{Mat4, Vec3};
+
+    pub struct Camera {
+        pub eye: Vec3,
+        pub target: Vec3,
+        pub up: Vec3,
+        pub aspect: f32,
+        pub fov_y_radians: f32,
+        pub znear: f32,
+        pub zfar: f32,
+    }
+
+    impl Camera {
+        pub fn build_view_projection_matrix(&self) -> Mat4 {
+            let view = Mat4::look_at_rh(self.eye, self.target, self.up);
+            let proj = Mat4::perspective_rh(self.fov_y_radians, self.aspect, self.znear, self.zfar);
+            proj * view
+        }
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct CameraUniform {
+        view_proj: [[f32; 4]; 4],
+    }
+
+    impl CameraUniform {
+        pub fn new() -> Self {
+            Self {
+                view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+            }
+        }
+
+        pub fn update_view_proj(&mut self, camera: &Camera) {
+            self.view_proj = camera.build_view_projection_matrix().to_cols_array_2d();
+        }
     }
 }

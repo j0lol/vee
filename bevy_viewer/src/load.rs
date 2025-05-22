@@ -55,7 +55,8 @@ fn shape_data_to_mesh(data: ShapeData) -> Mesh {
     mesh
 }
 pub fn load_mesh(res: ResourceShape, shape: Shape, hair_num: usize) -> Result<Mesh> {
-    let GenericResourceShape::Element(mut shape) = res.fetch_shape(shape, hair_num).unwrap() else {
+    let GenericResourceShape::Element(mut shape) = res.index_by_shape(shape, hair_num).unwrap()
+    else {
         panic!("wah")
     };
 

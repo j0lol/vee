@@ -30,12 +30,12 @@ pub struct Rendered3dShape {
     pub indices: Vec<u32>,
     pub color: Vec4,
     pub texture: Option<crate::draw::wgpu_render::texture::Texture>,
-    position: Vec3,
+    pub position: Vec3,
 }
 
 impl Rendered3dShape {
     #[allow(clippy::too_many_lines)]
-    fn render(
+    pub fn render(
         self,
         st: &mut impl ProgramState,
         texture_view: &TextureView,

@@ -74,6 +74,8 @@ pub mod nx {
     // I'm not doing all of that.
     #![allow(clippy::unreadable_literal, clippy::excessive_precision)]
 
+    use num_enum::IntoPrimitive;
+
     use crate::charinfo::nx::NxCharInfo;
 
     use super::Color;
@@ -84,8 +86,9 @@ pub mod nx {
         Eyebrow,
         Mouth,
         Glass,
-        Beard,
-        NoseLine,
+        BeardTexture,
+        NoseLineShape,
+        FacelineMakeup,
     }
 
     pub const NON_MODULATION: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
@@ -93,38 +96,77 @@ pub mod nx {
     const BLACK: Color = linear::COMMON_COLOR[8];
     const TRANSPARENT: Color = [0.0, 0.0, 0.0, 0.0];
 
+    #[repr(u8)]
+    #[derive(IntoPrimitive, Debug, Clone, Copy)]
+    pub enum ModulationMode {
+        SingleColor = 0,
+        DirectTexture = 1,
+        LayeredRgbTexture = 2,
+        AlphaTexture = 3,
+        LuminanceAlphaTexture = 4,
+    }
+    #[derive(Debug, Clone, Copy)]
+    pub struct ModulationIntent {
+        pub mode: ModulationMode,
+        pub channels: [Color; 3],
+    }
+
     /// This function will give you color modulations for each needed texture or shape.
     /// When a channel is not modulated, it will return [NaN, NaN, NaN, NaN]
     /// EG: An "R" format texture does not need G&B modulation
+    /// Ref: https://github.com/ariankordi/ffl/blob/97eecdf3688f92c4c95cecf5d6ab3e84c0ee42c0/src/FFLiModulate.cpp
     #[allow(clippy::must_use_candidate)]
-    pub fn modulate(class: ColorModulated, char: &NxCharInfo) -> [Color; 3] {
+    pub fn modulate(class: ColorModulated, char: &NxCharInfo) -> ModulationIntent {
+        use ModulationMode as M;
         match class {
-            ColorModulated::Eye => [
-                BLACK,
-                WHITE,
-                linear::COMMON_COLOR[usize::from(char.eye_color)],
-            ],
-            ColorModulated::Eyebrow => [
-                linear::COMMON_COLOR[usize::from(char.eyebrow_color)],
-                NON_MODULATION,
-                NON_MODULATION,
-            ],
-            ColorModulated::Mouth => [
-                linear::COMMON_COLOR[usize::from(char.mouth_color)],
-                WHITE,
-                linear::UPPER_LIP_COLOR[usize::from(char.mouth_color)],
-            ],
-            ColorModulated::Glass => [
-                linear::COMMON_COLOR[usize::from(char.glass_color)],
-                NON_MODULATION,
-                NON_MODULATION,
-            ],
-            ColorModulated::Beard => [
-                TRANSPARENT,
-                linear::COMMON_COLOR[usize::from(char.beard_color)],
-                TRANSPARENT,
-            ],
-            ColorModulated::NoseLine => [BLACK, TRANSPARENT, TRANSPARENT],
+            ColorModulated::Eye => ModulationIntent {
+                mode: M::LayeredRgbTexture,
+                channels: [
+                    BLACK,
+                    WHITE,
+                    linear::COMMON_COLOR[usize::from(char.eye_color)],
+                ],
+            },
+            ColorModulated::Eyebrow => ModulationIntent {
+                mode: M::AlphaTexture,
+                channels: [
+                    linear::COMMON_COLOR[usize::from(char.eyebrow_color)],
+                    NON_MODULATION,
+                    NON_MODULATION,
+                ],
+            },
+            ColorModulated::Mouth => ModulationIntent {
+                mode: M::LayeredRgbTexture,
+                channels: [
+                    linear::COMMON_COLOR[usize::from(char.mouth_color)],
+                    linear::UPPER_LIP_COLOR[usize::from(char.mouth_color)],
+                    WHITE,
+                ],
+            },
+            ColorModulated::Glass => ModulationIntent {
+                mode: M::LuminanceAlphaTexture,
+                channels: [
+                    linear::COMMON_COLOR[usize::from(char.glass_color)],
+                    NON_MODULATION,
+                    NON_MODULATION,
+                ],
+            },
+            ColorModulated::BeardTexture => ModulationIntent {
+                mode: M::AlphaTexture,
+                channels: [
+                    linear::COMMON_COLOR[usize::from(char.beard_color)],
+                    NON_MODULATION,
+                    NON_MODULATION,
+                ],
+            },
+            ColorModulated::NoseLineShape => ModulationIntent {
+                mode: M::AlphaTexture,
+                channels: [BLACK, NON_MODULATION, NON_MODULATION],
+            },
+            ColorModulated::FacelineMakeup => ModulationIntent {
+                mode: M::DirectTexture,
+                channels: [NON_MODULATION; 3],
+            },
         }
     }
 

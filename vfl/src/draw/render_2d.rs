@@ -1,4 +1,5 @@
 use bytemuck::cast_slice;
+use glam::vec3;
 use image::DynamicImage;
 use nalgebra::Matrix4;
 use wgpu::{
@@ -6,27 +7,62 @@ use wgpu::{
     util::DeviceExt,
 };
 
-use crate::res::tex::nx::ResourceTextureFormat;
+use crate::{
+    color::nx::{ModulationIntent, modulate},
+    res::tex::nx::ResourceTextureFormat,
+};
 
 use super::{
+    faceline::trivial_quad,
     render_3d::ProgramState,
     wgpu_render::{TextureTransformUniform, Vertex},
 };
 
-const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
+type Color = [f32; 4];
+
+const NON_REPLACEMENT: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
 #[derive(Debug)]
 pub struct Rendered2dShape {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub tex: DynamicImage,
     pub mvp_matrix: Matrix4<f32>,
-    pub texture_type: ResourceTextureFormat,
-    pub channel_replacements: [[f32; 4]; 3],
+    pub modulation: ModulationIntent,
+    pub opaque: Option<Color>,
 }
 
 impl Rendered2dShape {
+    pub fn render_texture_trivial(
+        rendered_texture: DynamicImage,
+        modulation: ModulationIntent,
+        opaque: Option<Color>,
+        st: &mut impl ProgramState,
+        texture_view: &TextureView,
+        encoder: &mut CommandEncoder,
+    ) {
+        let (vertices, indices) = trivial_quad();
+
+        let mvp_matrix = {
+            let scale = vec3(-2.0, -2.0, 1.0);
+            let scale = nalgebra::Vector3::<f32>::from(Into::<mint::Vector3<f32>>::into(scale));
+
+            nalgebra::Matrix4::new_nonuniform_scaling(&scale)
+        };
+
+        let rendered_2d_shape = Rendered2dShape {
+            vertices,
+            indices,
+            tex: rendered_texture,
+            mvp_matrix,
+            modulation,
+            opaque,
+        };
+
+        rendered_2d_shape.render(st, texture_view, encoder);
+    }
+
     #[allow(clippy::too_many_lines)]
-    fn render_2d_shape(
+    pub fn render(
         self,
         st: &mut impl ProgramState,
         texture_view: &TextureView,
@@ -136,10 +172,10 @@ impl Rendered2dShape {
         let mvp_matrix = self.mvp_matrix.into();
         let mvp_uniform = TextureTransformUniform {
             mvp_matrix,
-            channel_replacements_r: self.channel_replacements[0],
-            channel_replacements_g: self.channel_replacements[1],
-            channel_replacements_b: self.channel_replacements[2],
-            texture_type: (Into::<u8>::into(self.texture_type)).into(),
+            channel_replacements_r: self.modulation.channels[0],
+            channel_replacements_g: self.modulation.channels[1],
+            channel_replacements_b: self.modulation.channels[2],
+            texture_type: (Into::<u8>::into(self.modulation.mode)).into(),
             pad: Default::default(),
         };
 
@@ -238,7 +274,15 @@ impl Rendered2dShape {
                     view: texture_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: match self.opaque {
+                            Some([r, g, b, a]) => wgpu::LoadOp::Clear(wgpu::Color {
+                                r: r.into(),
+                                g: g.into(),
+                                b: b.into(),
+                                a: a.into(),
+                            }),
+                            None => wgpu::LoadOp::Load,
+                        },
                         store: wgpu::StoreOp::Store,
                     },
                 })],
