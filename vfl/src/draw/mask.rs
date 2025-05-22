@@ -56,6 +56,7 @@ pub enum ImageOrigin {
     Center,
     Left,
     Right,
+    Ignore,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -70,7 +71,7 @@ pub struct FacePart {
 
 /// The positioning of all parts of the face on the mask.
 #[derive(Clone, Copy, Debug)]
-pub struct FaceParts {
+pub struct MaskFaceParts {
     pub eye: [FacePart; 2],
     pub eyebrow: [FacePart; 2],
     pub mouth: FacePart,
@@ -78,7 +79,7 @@ pub struct FaceParts {
     pub mole: FacePart,
 }
 
-impl FaceParts {
+impl MaskFaceParts {
     pub fn init_glasses(
         info: &NxCharInfo,
         resolution: f32,
@@ -111,7 +112,7 @@ impl FaceParts {
 
         [eye_l, eye_r]
     }
-    pub fn init(info: &NxCharInfo, resolution: f32) -> FaceParts {
+    pub fn init(info: &NxCharInfo, resolution: f32) -> MaskFaceParts {
         // RFLi_TEX_UNIT
         let resolution = resolution / 64.0;
 
@@ -213,7 +214,7 @@ impl FaceParts {
             origin: ImageOrigin::Center,
         };
 
-        FaceParts {
+        MaskFaceParts {
             eye: [eye_l, eye_r],
             eyebrow: [eb_l, eb_r],
             mouth,

@@ -11,3 +11,4 @@ vfl = { path = "../vfl", features = ["res", "draw"] }
 glam = { version = "0.30.3", features = ["bytemuck"] }
 bytemuck = "1.23.0"
 image = "0.25.6"
+nalgebra = "0.33.2"

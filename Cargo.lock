@@ -3310,6 +3310,7 @@ dependencies = [
  "bytemuck",
  "glam 0.30.3",
  "image 0.25.6",
+ "nalgebra 0.33.2",
  "pollster",
  "vfl",
  "wgpu 25.0.0",

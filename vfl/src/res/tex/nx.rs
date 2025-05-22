@@ -254,7 +254,40 @@ mod tests {
         let tex = res.get_image(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
 
         if let Some(tex) = tex {
-            tex.save("./tex.png")?;
+            tex.save(concat!(env!("CARGO_MANIFEST_DIR"), "/test_output/eye.png"))?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    #[cfg(feature = "draw")]
+    fn face_tex() -> R {
+        let mut bin = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
+
+        let res = ResourceTexture::read(&mut bin)?;
+
+        // let res = res.makeup[1];
+
+        let tex =
+            res.makeup[1].get_image(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
+
+        if let Some(tex) = tex {
+            tex.save(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/test_output/makeup.png"
+            ))?;
+            // tex.save("./tex.png")?;
+        }
+
+        // let res = ResourceTexture::read(&mut bin)?;
+        let tex =
+            res.noseline[1].get_image(&mut BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?))?;
+
+        if let Some(tex) = tex {
+            tex.save(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/test_output/noseline.png"
+            ))?;
         }
         Ok(())
     }

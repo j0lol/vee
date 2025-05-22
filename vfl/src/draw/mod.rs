@@ -1,4 +1,8 @@
 #[cfg(feature = "draw")]
+pub mod render_2d;
+#[cfg(feature = "draw")]
+pub mod render_3d;
+#[cfg(feature = "draw")]
 pub mod wgpu_render;
 
 pub mod faceline;

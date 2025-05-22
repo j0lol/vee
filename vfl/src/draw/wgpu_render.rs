@@ -1,6 +1,6 @@
 use super::TEX_SCALE_X;
 use super::TEX_SCALE_Y;
-use super::mask::{FacePart, FaceParts, ImageOrigin};
+use super::mask::{FacePart, ImageOrigin, MaskFaceParts};
 use crate::{
     charinfo::nx::NxCharInfo,
     color::{
@@ -17,6 +17,7 @@ use binrw::BinRead;
 use glam::{UVec2, uvec2, vec3};
 use image::{DynamicImage, RgbaImage};
 use nalgebra::Matrix4;
+use std::f32::consts::PI;
 use std::{error::Error, fs::File, io::BufReader};
 use wgpu::{DeviceDescriptor, TexelCopyTextureInfo, util::DeviceExt};
 
@@ -58,6 +59,8 @@ pub struct TextureTransformUniform {
 }
 
 const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
+#[derive(Debug)]
+#[deprecated]
 pub struct RenderShape {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -88,7 +91,7 @@ impl RenderContext {
     ) -> Result<Self, Box<dyn Error>> {
         let res_texture = ResourceTexture::read(file_texture)?;
 
-        let mask = FaceParts::init(char, 256.0);
+        let mask = MaskFaceParts::init(char, 256.0);
 
         let mut make_shape =
             |part: FacePart, modulated: ColorModulated, tex_data: TextureElement| {
@@ -148,6 +151,52 @@ impl RenderContext {
         })
     }
 
+    #[allow(clippy::too_many_lines)]
+    pub fn new_faceline(
+        char: &NxCharInfo,
+        (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
+    ) -> Result<Self, Box<dyn Error>> {
+        let res_texture = ResourceTexture::read(file_texture)?;
+
+        let mask = MaskFaceParts::init(char, 256.0);
+        let makeup = char.faceline_make;
+
+        let mut make_shape =
+            |part: FacePart, modulated: ColorModulated, tex_data: TextureElement| {
+                let (vertices, indices, mtx) = quad(
+                    part.x,
+                    part.y,
+                    part.width,
+                    part.height,
+                    part.angle_deg,
+                    part.origin,
+                    256.0,
+                );
+
+                let tex = tex_data.get_image(file_texture).unwrap().unwrap();
+
+                RenderShape {
+                    vertices,
+                    indices,
+                    tex: image::DynamicImage::ImageRgba8(tex),
+                    mvp_matrix: mtx,
+                    texture_type: ResourceTextureFormat::try_from(tex_data.texture.format).unwrap(),
+                    channel_replacements: modulate(modulated, char),
+                }
+            };
+
+        let mouth = make_shape(
+            mask.mouth,
+            ColorModulated::Mouth,
+            res_texture.mouth[char.mouth_type as usize],
+        );
+
+        Ok(RenderContext {
+            size: uvec2(FACE_OUTPUT_SIZE.into(), FACE_OUTPUT_SIZE.into()),
+            shape: vec![mouth],
+        })
+    }
+
     pub fn new_glasses(
         char: &NxCharInfo,
         (file_shape, file_texture): (&mut BufReader<File>, &mut BufReader<File>),
@@ -158,7 +207,7 @@ impl RenderContext {
         let nose_translate =
             res_shape.face_line_transform[char.faceline_type as usize].nose_translate;
 
-        let glasses = dbg!(FaceParts::init_glasses(char, 256.0, nose_translate));
+        let glasses = dbg!(MaskFaceParts::init_glasses(char, 256.0, nose_translate));
 
         // let mask = FaceParts::init(&char, 256.0);
         // let part = mask[0];
@@ -222,7 +271,7 @@ impl RenderContext {
     }
 }
 
-fn model_view_matrix(
+pub fn model_view_matrix(
     translation: mint::Vector3<f32>,
     scale: mint::Vector3<f32>,
     rot_z: f32,
@@ -244,7 +293,7 @@ fn v2(x: f32, y: f32) -> [f32; 3] {
 }
 
 // https://github.com/SMGCommunity/Petari/blob/6e9ae741a99bb32e6ffbb230a88c976f539dde70/src/RVLFaceLib/RFL_MakeTex.c#L817
-fn quad(
+pub fn quad(
     x: f32,
     y: f32,
     width: f32,
@@ -263,13 +312,15 @@ fn quad(
     let s1: f32;
 
     let mv_mtx = model_view_matrix(
-        vec3(x, y, 0.0).into(),
+        vec3(x, resolution - y, 0.0).into(),
         vec3(width, height, 1.0).into(),
         rot_z,
     );
 
     let p_mtx = Matrix4::new_orthographic(0.0, resolution, 0.0, resolution, -200.0, 200.0);
-    let mvp_mtx = p_mtx * mv_mtx;
+    let mut mvp_mtx = p_mtx * mv_mtx;
+
+    *mvp_mtx.get_mut((1, 1)).unwrap() *= -1.0;
 
     match origin {
         ImageOrigin::Center => {
@@ -283,6 +334,11 @@ fn quad(
             s1 = 0.0;
         }
         ImageOrigin::Left => {
+            base_x = 0.0;
+            s0 = 0.0;
+            s1 = 1.0;
+        }
+        ImageOrigin::Ignore => {
             base_x = 0.0;
             s0 = 0.0;
             s1 = 1.0;
@@ -317,6 +373,7 @@ fn quad(
     )
 }
 
+#[deprecated]
 #[allow(clippy::too_many_lines)]
 pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage {
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
@@ -651,9 +708,181 @@ pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage 
     image.unwrap()
 }
 
+pub mod texture {
+    use std::error::Error;
+
+    use glam::UVec2;
+    use image::GenericImageView;
+    use wgpu::TextureFormat;
+
+    pub struct Texture {
+        #[allow(unused)]
+        pub texture: wgpu::Texture,
+        pub view: wgpu::TextureView,
+        pub sampler: wgpu::Sampler,
+    }
+
+    #[allow(unused)]
+    impl Texture {
+        pub fn from_bytes(
+            device: &wgpu::Device,
+            queue: &wgpu::Queue,
+            bytes: &[u8],
+            label: &str,
+        ) -> Result<Self, Box<dyn Error>> {
+            let img = image::load_from_memory(bytes)?;
+            Self::from_image(device, queue, &img, Some(label))
+        }
+
+        pub fn from_image(
+            device: &wgpu::Device,
+            queue: &wgpu::Queue,
+            img: &image::DynamicImage,
+            label: Option<&str>,
+        ) -> Result<Self, Box<dyn Error>> {
+            let rgba = img.to_rgba8();
+            let dimensions = img.dimensions();
+
+            let size = wgpu::Extent3d {
+                width: dimensions.0,
+                height: dimensions.1,
+                depth_or_array_layers: 1,
+            };
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label,
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    aspect: wgpu::TextureAspect::All,
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                },
+                &rgba,
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(4 * dimensions.0),
+                    rows_per_image: Some(dimensions.1),
+                },
+                size,
+            );
+
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Nearest,
+                mipmap_filter: wgpu::FilterMode::Nearest,
+                ..Default::default()
+            });
+
+            Ok(Self {
+                texture,
+                view,
+                sampler,
+            })
+        }
+
+        pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float; // 1.
+
+        pub fn create_depth_texture(device: &wgpu::Device, size: &UVec2, label: &str) -> Self {
+            let size = wgpu::Extent3d {
+                // 2.
+                width: size.x.max(1),
+                height: size.y.max(1),
+                depth_or_array_layers: 1,
+            };
+            let desc = wgpu::TextureDescriptor {
+                label: Some(label),
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: Self::DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
+                       | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            };
+            let texture = device.create_texture(&desc);
+
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+                // 4.
+                address_mode_u: wgpu::AddressMode::ClampToEdge,
+                address_mode_v: wgpu::AddressMode::ClampToEdge,
+                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::FilterMode::Nearest,
+                compare: Some(wgpu::CompareFunction::LessEqual), // 5.
+                lod_min_clamp: 0.0,
+                lod_max_clamp: 100.0,
+                ..Default::default()
+            });
+
+            Self {
+                texture,
+                view,
+                sampler,
+            }
+        }
+
+        pub fn create_texture(device: &wgpu::Device, size: &UVec2, label: &str) -> Self {
+            let size = wgpu::Extent3d {
+                // 2.
+                width: size.x.max(1),
+                height: size.y.max(1),
+                depth_or_array_layers: 1,
+            };
+            let desc = wgpu::TextureDescriptor {
+                label: Some(label),
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: TextureFormat::Bgra8UnormSrgb,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
+                       | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            };
+            let texture = device.create_texture(&desc);
+
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+                // 4.
+                address_mode_u: wgpu::AddressMode::MirrorRepeat,
+                address_mode_v: wgpu::AddressMode::MirrorRepeat,
+                address_mode_w: wgpu::AddressMode::MirrorRepeat,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::FilterMode::Nearest,
+                lod_min_clamp: 0.0,
+                lod_max_clamp: 100.0,
+                ..Default::default()
+            });
+
+            Self {
+                texture,
+                view,
+                sampler,
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::draw::mask::FaceParts;
+    use crate::draw::mask::MaskFaceParts;
     use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
     use crate::res::tex::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT};
     use binrw::BinRead;

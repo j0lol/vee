@@ -1,23 +1,13 @@
 use std::{f32::consts::FRAC_PI_2, fs::File, io::BufReader, sync::Arc};
 
 use camera::{Camera, CameraUniform};
-use char::{draw_char, draw_mask};
-use glam::Vec3;
+use char::draw_char;
+use glam::{Vec3, Vec4, vec4};
 use vfl::{
     charinfo::nx::{BinRead, NxCharInfo},
-    draw::wgpu_render::{
-        RenderContext, RenderShape as Rendered2dShape, SHADER, TextureTransformUniform, Vertex,
-        cast_slice, render_context_wgpu,
-    },
-    res::{
-        shape::nx::{GenericResourceShape, ResourceShape, SHAPE_MID_DAT, ShapeData, ShapeElement},
-        tex::nx::TEXTURE_MID_SRGB_DAT,
-    },
+    res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
 };
-use wgpu::{
-    Backends, CommandEncoder, TexelCopyTextureInfo, Texture, TextureFormat, TextureView,
-    include_wgsl, util::DeviceExt,
-};
+use wgpu::{Backends, util::DeviceExt};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -26,8 +16,39 @@ use winit::{
 };
 
 pub mod char;
+pub mod render;
 
-struct State {
+const OVERLAY_REBECCA_PURPLE: wgpu::Color = wgpu::Color {
+    r: 0.1,
+    g: 0.12,
+    b: 0.1,
+    a: 0.3,
+};
+const DARK_REBECCA_PURPLE: wgpu::Color = wgpu::Color {
+    r: 0.2,
+    g: 0.1,
+    b: 0.3,
+    a: 1.0,
+};
+
+pub const fn wgpu_color_to_vec4(color: wgpu::Color) -> Vec4 {
+    vec4(
+        color.r as f32,
+        color.g as f32,
+        color.b as f32,
+        color.a as f32,
+    )
+}
+
+const FACES: [&str; 4] = [
+    // "testguy.charinfo",
+    "j0.charinfo",
+    "charline.charinfo",
+    "Jasmine.charinfo",
+    "soyun.charinfo",
+];
+
+pub struct State {
     window: Arc<Window>,
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -43,6 +64,7 @@ struct State {
     camera_uniform: CameraUniform,
     camera_bind_group_layout: wgpu::BindGroupLayout,
     depth_texture: texture::Texture,
+    camera_rotations: usize,
 }
 
 impl State {
@@ -79,12 +101,12 @@ impl State {
         let res_shape = SHAPE_MID_DAT.to_string();
 
         let mut char_info =
-            File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../Jasmine.charinfo")).unwrap();
+            File::open(format!("{}/../{}", env!("CARGO_MANIFEST_DIR"), FACES[0])).unwrap();
         let char_info = NxCharInfo::read(&mut char_info).unwrap();
 
         let camera = Camera {
-            eye: (0.0, 50.0, 100.0).into(),
-            target: (0.0, 1.0, 0.0).into(),
+            eye: (0.0, 25.0, 100.0).into(),
+            target: (0.0, 25.0, 0.0).into(),
             up: Vec3::Y,
             aspect: size.width as f32 / size.height as f32,
             fov_y_radians: FRAC_PI_2,
@@ -125,6 +147,8 @@ impl State {
             label: Some("camera_bind_group"),
         });
 
+        let camera_rotations = 0;
+
         let state = State {
             window,
             device,
@@ -141,6 +165,7 @@ impl State {
             camera_uniform,
             camera_bind_group_layout,
             depth_texture,
+            camera_rotations,
         };
 
         // Configure surface for the first time
@@ -193,7 +218,8 @@ impl State {
                 ..Default::default()
             });
 
-        // Renders a GREEN screen
+        // Clear the screen, so we can layer a BUNCH of render passes...
+
         let mut encoder = self.device.create_command_encoder(&Default::default());
         // Create the renderpass which will clear the screen.
         let renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -202,12 +228,7 @@ impl State {
                 view: &texture_view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.2,
-                        g: 0.2,
-                        b: 0.2,
-                        a: 1.0,
-                    }),
+                    load: wgpu::LoadOp::Clear(DARK_REBECCA_PURPLE),
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -242,16 +263,29 @@ impl State {
     fn update(&mut self) {
         let forward = self.camera.target - self.camera.eye;
         let forward_norm = forward.normalize();
+        let forward_mag = forward.length();
 
         let right = forward_norm.cross(self.camera.up);
 
-        // Redo radius calc in case the up/ down is pressed.
-        let forward = self.camera.target - self.camera.eye;
-        let forward_mag = forward.length();
-
-        const CAMERA_ROTATE_SPEED: f32 = 1.0;
+        const CAMERA_ROTATE_SPEED: f32 = 2.0;
         self.camera.eye =
             self.camera.target - (forward + right * CAMERA_ROTATE_SPEED).normalize() * forward_mag;
+
+        let forward_new = self.camera.target - self.camera.eye;
+        let forward_new_norm = forward_new.normalize();
+
+        const ROTATION_POINT: f32 = 0.0;
+        if forward_norm.x < ROTATION_POINT && forward_new_norm.x >= ROTATION_POINT {
+            self.camera_rotations += 1;
+
+            let mut char_info = File::open(format!(
+                "{}/../{}",
+                env!("CARGO_MANIFEST_DIR"),
+                FACES[self.camera_rotations % FACES.len()]
+            ))
+            .unwrap();
+            self.char_info = NxCharInfo::read(&mut char_info).unwrap();
+        }
 
         self.camera_uniform.update_view_proj(&self.camera);
         self.queue.write_buffer(
@@ -384,6 +418,7 @@ mod texture {
         pub sampler: wgpu::Sampler,
     }
 
+    #[allow(unused)]
     impl Texture {
         pub fn from_bytes(
             device: &wgpu::Device,
@@ -529,13 +564,12 @@ mod texture {
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
                 // 4.
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
+                address_mode_u: wgpu::AddressMode::MirrorRepeat,
+                address_mode_v: wgpu::AddressMode::MirrorRepeat,
+                address_mode_w: wgpu::AddressMode::MirrorRepeat,
                 mag_filter: wgpu::FilterMode::Linear,
                 min_filter: wgpu::FilterMode::Linear,
                 mipmap_filter: wgpu::FilterMode::Nearest,
-                compare: Some(wgpu::CompareFunction::LessEqual), // 5.
                 lod_min_clamp: 0.0,
                 lod_max_clamp: 100.0,
                 ..Default::default()

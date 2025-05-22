@@ -186,11 +186,11 @@ impl BinRead for ShapeData {
 }
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceCommonAttribute {
-    pub(crate) offset: u32,
-    pub(crate) size: u32,
-    pub(crate) size_compressed: u32,
-    pub(crate) compression_level: u8,
-    pub(crate) memory_level: u8,
+    pub offset: u32,
+    pub size: u32,
+    pub size_compressed: u32,
+    pub compression_level: u8,
+    pub memory_level: u8,
     pad: u16,
 }
 #[derive(BinRead, Default, Debug, Clone, Copy)]
@@ -374,7 +374,7 @@ mod tests {
         let mut file = File::open(SHAPE_MID_DAT)?;
 
         let gltf = shape.gltf(&mut file)?;
-        gltf.export_glb("jas.glb")?;
+        gltf.export_glb(concat!(env!("CARGO_MANIFEST_DIR"), "/test_output/jas.glb"))?;
 
         Ok(())
     }

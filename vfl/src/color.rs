@@ -84,11 +84,14 @@ pub mod nx {
         Eyebrow,
         Mouth,
         Glass,
+        Beard,
+        NoseLine,
     }
 
     pub const NON_MODULATION: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
     const WHITE: Color = linear::COMMON_COLOR[99];
     const BLACK: Color = linear::COMMON_COLOR[8];
+    const TRANSPARENT: Color = [0.0, 0.0, 0.0, 0.0];
 
     /// This function will give you color modulations for each needed texture or shape.
     /// When a channel is not modulated, it will return [NaN, NaN, NaN, NaN]
@@ -108,14 +111,20 @@ pub mod nx {
             ],
             ColorModulated::Mouth => [
                 linear::COMMON_COLOR[usize::from(char.mouth_color)],
-                linear::UPPER_LIP_COLOR[usize::from(char.mouth_color)],
                 WHITE,
+                linear::UPPER_LIP_COLOR[usize::from(char.mouth_color)],
             ],
             ColorModulated::Glass => [
                 linear::COMMON_COLOR[usize::from(char.glass_color)],
                 NON_MODULATION,
                 NON_MODULATION,
             ],
+            ColorModulated::Beard => [
+                TRANSPARENT,
+                linear::COMMON_COLOR[usize::from(char.beard_color)],
+                TRANSPARENT,
+            ],
+            ColorModulated::NoseLine => [BLACK, TRANSPARENT, TRANSPARENT],
         }
     }
 
