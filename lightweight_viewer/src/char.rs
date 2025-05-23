@@ -1,25 +1,19 @@
+use crate::State;
 use crate::render::shape_data_to_render_3d_shape;
+use glam::{Vec3, uvec2};
+use image::{DynamicImage, RgbaImage};
+use vfl::color::nx::ModulationIntent;
 use vfl::draw::render_3d::Rendered3dShape;
-use glam::{uvec2, Vec3};
-use image::DynamicImage;
+use vfl::res::tex::nx::{ResourceTexture, TextureElement};
 use vfl::{
-    color::nx::{modulate, ColorModulated},
+    color::nx::{ColorModulated, modulate},
     draw::{
         render_2d::Rendered2dShape,
-        wgpu_render::{
-            texture
-            , RenderContext,
-        },
+        wgpu_render::{RenderContext, texture},
     },
-    res::shape::nx::{
-        GenericResourceShape, Shape,
-    },
+    res::shape::nx::{GenericResourceShape, Shape},
 };
-use wgpu::{
-    CommandEncoder,
-    TextureView,
-};
-use crate::State;
+use wgpu::{CommandEncoder, TextureView};
 
 pub fn draw_noseline(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
     let res_texture = &st.resources.texture_header;
@@ -56,37 +50,94 @@ pub fn draw_mask(st: &mut State, texture_view: &TextureView, encoder: &mut Comma
     }
 }
 
-fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
-    let res_texture = &st.resources.texture_header;
-
-    let tex = res_texture.makeup[st.char_info.faceline_make as usize]
+// Looks up a TextureElement, and returns the texture with any modulation that needs to be done.
+// Returns an Option<T> because the texture could not exist (e.g. CharInfo w/o Beard)
+fn load_faceline_texture(
+    st: &mut State,
+    texture_element: TextureElement,
+    modulated: ColorModulated,
+) -> Option<(DynamicImage, ModulationIntent)> {
+    texture_element
         .get_image(&st.resources.texture_data)
         .unwrap()
-        .unwrap();
-    let tex = image::DynamicImage::ImageRgba8(tex);
+        .map(|tex| {
+            (
+                DynamicImage::ImageRgba8(tex),
+                modulate(modulated, &st.char_info),
+            )
+        })
+}
 
-    Rendered2dShape::render_texture_trivial(
-        tex,
-        modulate(
-            vfl::color::nx::ColorModulated::FacelineMakeup,
-            &st.char_info,
+// Load faceline textures in order [wrinkle, makeup, beard], and removes any that don't exist
+fn get_faceline_textures(
+    st: &mut State,
+    res_texture: &ResourceTexture,
+) -> Vec<(DynamicImage, ModulationIntent)> {
+    vec![
+        load_faceline_texture(
+            st,
+            res_texture.wrinkle[st.char_info.faceline_wrinkle as usize],
+            ColorModulated::FacelineWrinkle,
         ),
-        Some(vfl::color::nx::srgb::FACELINE_COLOR[usize::from(st.char_info.faceline_color)]),
-        st,
-        texture_view,
-        encoder,
-    );
+        load_faceline_texture(
+            st,
+            res_texture.makeup[st.char_info.faceline_make as usize],
+            ColorModulated::FacelineMakeup,
+        ),
+        {
+            // We need to do a smarter check here.
+            if st.char_info.beard_type >= 4 {
+                load_faceline_texture(st, res_texture.beard[1], ColorModulated::BeardTexture)
+            } else {
+                None
+            }
+        },
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
+    let res_texture = st.resources.texture_header;
+
+    // let makeup_tex = res_texture.makeup[st.char_info.faceline_make as usize]
+    //     .get_image(&st.resources.texture_data)
+    //     .unwrap();
+    // let Some(makeup_tex) = makeup_tex else {
+    //     return;
+    // };
+    // let makeup_tex = image::DynamicImage::ImageRgba8(tex);
+
+    let textures = get_faceline_textures(st, &res_texture);
+
+    for (i, (rendered_texture, modulation)) in textures.iter().enumerate() {
+        // Check if we are the first to be rendered out, then add an opaque background.
+        // We don't want an opaque redraw happening over our other faceline textures.
+        let opaque = (i == 0).then_some(
+            vfl::color::nx::srgb::FACELINE_COLOR[usize::from(st.char_info.faceline_color)],
+        );
+
+        Rendered2dShape::render_texture_trivial(
+            rendered_texture.to_owned(),
+            modulation.to_owned(),
+            opaque,
+            st,
+            texture_view,
+            encoder,
+        );
+    }
 }
 
 pub fn draw_char(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
     let shapes = get_char_shapes(st, encoder);
 
-    for shape in shapes {
+    for mut shape in shapes {
         shape.render(st, texture_view, encoder);
     }
 }
 
-fn load_shape(
+pub(crate) fn load_shape(
     shape_kind: Shape,
     shape_index: u8,
     shape_color: u8,
@@ -165,6 +216,7 @@ fn load_shape(
             let faceline_texture =
                 texture::Texture::create_texture(&st.device, &uvec2(512, 512), "facelinetex");
 
+            println!("hi!");
             draw_faceline(st, &faceline_texture.view, encoder);
 
             Some(faceline_texture)

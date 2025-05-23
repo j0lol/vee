@@ -1,7 +1,10 @@
+use std::rc::Rc;
+use std::sync::{Mutex, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, io::BufReader, sync::Arc};
 
 use camera::{Camera, CameraUniform};
 use char::draw_char;
+use char_model::CharModel;
 use glam::{UVec2, Vec3, Vec4, uvec2, vec4};
 use vfl::res::shape::nx::ResourceShape;
 use vfl::res::tex::nx::ResourceTexture;
@@ -11,6 +14,7 @@ use vfl::{
     res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
 };
 use wgpu::{Backends, util::DeviceExt};
+use wgpu::{CommandEncoder, TextureView};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -18,7 +22,10 @@ use winit::{
     window::{Window, WindowId},
 };
 
+static CHAR_MODEL: OnceLock<Mutex<CharModel>> = OnceLock::new();
+
 pub mod char;
+pub mod char_model;
 pub mod render;
 
 const OVERLAY_REBECCA_PURPLE: wgpu::Color = wgpu::Color {
@@ -43,8 +50,8 @@ pub const fn wgpu_color_to_vec4(color: wgpu::Color) -> Vec4 {
     )
 }
 
-const FACES: [&str; 4] = [
-    // "testguy.charinfo",
+const FACES: [&str; 5] = [
+    "testguy.charinfo",
     "j0.charinfo",
     "charline.charinfo",
     "Jasmine.charinfo",
@@ -58,6 +65,17 @@ pub struct ResourceData {
     shape_data: Vec<u8>,
 }
 
+struct WgpuSubState<'a> {
+    inner: (
+        wgpu::Device,
+        wgpu::Queue,
+        &'a wgpu::BindGroupLayout,
+        &'a wgpu::BindGroup,
+        wgpu::TextureFormat,
+        &'a texture::Texture,
+    ),
+}
+
 pub struct State {
     window: Arc<Window>,
     device: wgpu::Device,
@@ -66,6 +84,8 @@ pub struct State {
     surface: wgpu::Surface<'static>,
     surface_format: wgpu::TextureFormat,
     char_info: NxCharInfo,
+    char_model: Option<CharModel>,
+    char_remake: bool,
     camera: Camera,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
@@ -102,7 +122,46 @@ impl ProgramState for State {
     }
 }
 
+impl<'a> ProgramState for WgpuSubState<'a> {
+    fn device(&self) -> wgpu::Device {
+        self.inner.0.clone()
+    }
+
+    fn queue(&self) -> wgpu::Queue {
+        self.inner.1.clone()
+    }
+
+    fn camera_bgl(&self) -> &wgpu::BindGroupLayout {
+        self.inner.2
+    }
+
+    fn camera_bg(&self) -> &wgpu::BindGroup {
+        self.inner.3
+    }
+
+    fn surface_fmt(&self) -> wgpu::TextureFormat {
+        self.inner.4.clone()
+    }
+
+    fn depth_texture(&self) -> &texture::Texture {
+        self.inner.5
+    }
+}
+
 impl State {
+    fn wgpu_sub_state(&self) -> WgpuSubState {
+        WgpuSubState {
+            inner: (
+                self.device(),
+                self.queue(),
+                self.camera_bgl(),
+                self.camera_bg(),
+                self.surface_fmt(),
+                self.depth_texture(),
+            ),
+        }
+    }
+
     async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::PRIMARY | Backends::SECONDARY,
@@ -196,6 +255,7 @@ impl State {
             surface,
             surface_format,
             char_info,
+            char_model: None,
             camera,
             camera_buffer,
             camera_bind_group,
@@ -204,6 +264,7 @@ impl State {
             depth_texture,
             camera_rotations,
             resources,
+            char_remake: true,
         };
 
         // Configure surface for the first time
@@ -290,7 +351,27 @@ impl State {
 
         // If you wanted to call any drawing commands, they would go here.
         // draw_mask(self, &texture_view, &mut encoder);
-        draw_char(self, &texture_view, &mut encoder);
+
+        if CHAR_MODEL.get().is_none() {
+            let new_model = CharModel::new(self, &mut encoder);
+            CHAR_MODEL.set(Mutex::new(new_model)).unwrap();
+        }
+        if self.char_remake {
+            self.char_remake = false;
+            // let mut encoder = self.device.create_command_encoder(&Default::default());
+
+            let new_model = CharModel::new(self, &mut encoder);
+
+            let mut state = CHAR_MODEL.get().unwrap().lock().unwrap();
+            *state = new_model;
+        }
+
+        CHAR_MODEL
+            .get()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .render(self, &texture_view, &mut encoder);
 
         // Submit the command in the queue to execute
         self.queue.submit([encoder.finish()]);
@@ -323,6 +404,12 @@ impl State {
             ))
             .unwrap();
             self.char_info = NxCharInfo::read(&mut char_info).unwrap();
+
+            self.char_remake = true;
+            // if CHAR_MODEL.get().is_none() {
+            //     let new_model = CharModel::new(self, &mut encoder);
+            //     CHAR_MODEL.set(Mutex::new(new_model)).unwrap();
+            // }
         }
 
         self.camera_uniform.update_view_proj(&self.camera);
@@ -344,7 +431,7 @@ impl ApplicationHandler for App {
         // Create window object
         let window = Arc::new(
             event_loop
-                .create_window(Window::default_attributes())
+                .create_window(Window::default_attributes().with_title("Vee(FL)-Testing"))
                 .unwrap(),
         );
 
