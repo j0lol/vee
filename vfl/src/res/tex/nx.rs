@@ -184,11 +184,12 @@ impl TextureElement {
 
         // U32 to 4x U8
         let tex_data_decoded: Vec<u8> = tex_data_decoded
-            .iter()
-            .flat_map(|x| {
-                let [b, g, r, a] = x.to_le_bytes();
-                [r, g, b, a]
-            })
+            .into_iter()
+            .flat_map(<u32>::to_le_bytes)
+            // .flat_map(|x| {
+            //     let [b, g, r, a] = x.to_le_bytes();
+            //     [r, g, b, a]
+            // })
             .collect();
 
         Ok(Some(tex_data_decoded))

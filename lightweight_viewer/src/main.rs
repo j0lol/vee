@@ -50,9 +50,9 @@ pub const fn wgpu_color_to_vec4(color: wgpu::Color) -> Vec4 {
     )
 }
 
-const FACES: [&str; 5] = [
-    "testguy.charinfo",
-    "j0.charinfo",
+const FACES: [&str; 3] = [
+    // "testguy.charinfo",
+    // "j0.charinfo",
     "charline.charinfo",
     "Jasmine.charinfo",
     "soyun.charinfo",
@@ -344,13 +344,9 @@ impl State {
             occlusion_query_set: None,
         });
 
-        // If you wanted to call any drawing commands, they would go here.
-
-        // End the renderpass.
         drop(renderpass);
 
-        // If you wanted to call any drawing commands, they would go here.
-        // draw_mask(self, &texture_view, &mut encoder);
+        // Actually render a CharModel.
 
         if CHAR_MODEL.get().is_none() {
             let new_model = CharModel::new(self, &mut encoder);
@@ -358,7 +354,6 @@ impl State {
         }
         if self.char_remake {
             self.char_remake = false;
-            // let mut encoder = self.device.create_command_encoder(&Default::default());
 
             let new_model = CharModel::new(self, &mut encoder);
 
@@ -386,7 +381,7 @@ impl State {
 
         let right = forward_norm.cross(self.camera.up);
 
-        const CAMERA_ROTATE_SPEED: f32 = 2.0;
+        const CAMERA_ROTATE_SPEED: f32 = 0.5;
         self.camera.eye =
             self.camera.target - (forward + right * CAMERA_ROTATE_SPEED).normalize() * forward_mag;
 

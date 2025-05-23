@@ -129,6 +129,28 @@ fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut Comma
     }
 }
 
+fn draw_glasses(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
+    println!("bleh!");
+    let res_texture = st.resources.texture_header;
+
+    let Some((rendered_texture, modulation)) = load_faceline_texture(
+        st,
+        res_texture.glass[st.char_info.glass_type as usize],
+        ColorModulated::Glass,
+    ) else {
+        return;
+    };
+
+    Rendered2dShape::render_texture_trivial(
+        rendered_texture,
+        modulation,
+        None,
+        st,
+        texture_view,
+        encoder,
+    );
+}
+
 pub fn draw_char(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
     let shapes = get_char_shapes(st, encoder);
 
@@ -148,19 +170,16 @@ pub(crate) fn load_shape(
 
     // println!("Loading shp {shape_kind:?}[{shape_index:?}] col#{shape_color:?}");
 
-    let GenericResourceShape::FaceLineTransform(faceline_transform) = res_shape
-        .index_by_shape(
-            Shape::FaceLineTransform,
-            usize::from(st.char_info.faceline_type),
-        )
-        .unwrap()
+    let GenericResourceShape::FaceLineTransform(faceline_transform) = res_shape.index_by_shape(
+        Shape::FaceLineTransform,
+        usize::from(st.char_info.faceline_type),
+    )?
     else {
         panic!()
     };
 
-    let GenericResourceShape::Element(mut shape_element) = res_shape
-        .index_by_shape(shape_kind, usize::from(shape_index))
-        .unwrap()
+    let GenericResourceShape::Element(mut shape_element) =
+        res_shape.index_by_shape(shape_kind, usize::from(shape_index))?
     else {
         panic!()
     };
@@ -216,10 +235,17 @@ pub(crate) fn load_shape(
             let faceline_texture =
                 texture::Texture::create_texture(&st.device, &uvec2(512, 512), "facelinetex");
 
-            println!("hi!");
             draw_faceline(st, &faceline_texture.view, encoder);
 
             Some(faceline_texture)
+        }
+        Shape::Glasses => {
+            let glasses_texture =
+                texture::Texture::create_texture(&st.device, &uvec2(512, 512), "glassestex");
+
+            draw_glasses(st, &glasses_texture.view, encoder);
+
+            Some(glasses_texture)
         }
         _ => None,
     };

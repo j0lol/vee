@@ -91,7 +91,7 @@ fn modulate_alpha(color: vec4f) -> vec4f {
 fn modulate_lum_alpha(color: vec4f) -> vec4f {
     let repl_lum = mvp.color_r;
 
-    return vec4(color.g * repl_lum.rgb, repl_lum.a * color.r);
+    return vec4(color.r * repl_lum.rgb, repl_lum.a * color.g);
 }
 
 
