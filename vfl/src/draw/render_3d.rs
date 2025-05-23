@@ -24,7 +24,7 @@ pub trait ProgramState {
     fn depth_texture(&self) -> &texture::Texture;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Rendered3dShape {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
@@ -36,7 +36,7 @@ pub struct Rendered3dShape {
 impl Rendered3dShape {
     #[allow(clippy::too_many_lines)]
     pub fn render(
-        self,
+        &mut self,
         st: &mut impl ProgramState,
         texture_view: &TextureView,
         encoder: &mut CommandEncoder,
@@ -132,7 +132,7 @@ impl Rendered3dShape {
         };
 
         // Optional projected texture
-        let projected_texture_bind_group = self.texture.map(|texture| {
+        let projected_texture_bind_group = self.texture.as_ref().map(|texture| {
             st.device().create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: &projected_texture_bind_group_layout,
                 entries: &[

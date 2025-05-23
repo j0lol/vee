@@ -89,6 +89,7 @@ pub mod nx {
         BeardTexture,
         NoseLineShape,
         FacelineMakeup,
+        FacelineWrinkle,
     }
 
     pub const NON_MODULATION: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
@@ -163,7 +164,9 @@ pub mod nx {
                 mode: M::AlphaTexture,
                 channels: [BLACK, NON_MODULATION, NON_MODULATION],
             },
-            ColorModulated::FacelineMakeup => ModulationIntent {
+            // I can't find any information on modulating FacelineWrinkle somehow.
+            // TODO: Check for accuracy here.
+            ColorModulated::FacelineWrinkle | ColorModulated::FacelineMakeup => ModulationIntent {
                 mode: M::DirectTexture,
                 channels: [NON_MODULATION; 3],
             },

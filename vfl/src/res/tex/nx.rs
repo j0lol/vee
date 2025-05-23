@@ -47,10 +47,9 @@ impl TextureElement {
         let start: usize = self.common.offset as usize;
         let end: usize = self.common.offset as usize + self.common.size_compressed as usize;
 
-        println!("texload");
-        dbg!(&self);
+        // println!("texload");
 
-        let range = dbg!(start..end);
+        let range = start..end;
 
         // let tex_data = read_byte_slice(
         //     file,

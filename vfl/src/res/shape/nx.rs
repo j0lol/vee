@@ -223,17 +223,17 @@ impl ShapeElement {
     pub fn shape_data(&mut self, file: &[u8]) -> Result<ShapeData, Box<dyn Error>> {
         // exporter set boundingbox
 
-        println!("shapeload");
+        // println!("shapeload");
         let start: usize = self.common.offset as usize;
-        let end: usize = self.common.offset as usize + self.common.size as usize;
+        let end: usize = self.common.offset as usize + self.common.size_compressed as usize;
 
-        let range = dbg!(start..end);
+        let range = start..end;
 
         let shape_data = inflate_bytes(&file[range])?;
 
-        if !cfg!(target_family = "wasm") {
-            std::fs::write("./shape.dat", shape_data.clone())?;
-        }
+        // if !cfg!(target_family = "wasm") {
+        //     std::fs::write("./shape.dat", shape_data.clone())?;
+        // }
 
         let data =
             ShapeData::read_options(&mut Cursor::new(shape_data), Endian::Little, self.shape)?;

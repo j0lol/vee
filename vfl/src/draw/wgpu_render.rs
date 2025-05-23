@@ -904,6 +904,7 @@ pub async fn render_context_wgpu(render_context: RenderContext) -> DynamicImage 
 
 pub mod texture {
     use std::error::Error;
+    use std::fmt::Debug;
 
     use glam::UVec2;
     use image::GenericImageView;
@@ -914,6 +915,11 @@ pub mod texture {
         pub texture: wgpu::Texture,
         pub view: wgpu::TextureView,
         pub sampler: wgpu::Sampler,
+    }
+    impl Debug for Texture {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("Texture").finish()
+        }
     }
 
     #[allow(unused)]
