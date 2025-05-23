@@ -1,10 +1,12 @@
 use crate::State;
 use crate::render::shape_data_to_render_3d_shape;
 use glam::{Vec3, uvec2};
-use image::{DynamicImage, RgbaImage};
+use image::DynamicImage;
 use vfl::color::nx::ModulationIntent;
+use vfl::draw::render_2d::texture_format_to_wgpu;
 use vfl::draw::render_3d::Rendered3dShape;
-use vfl::res::tex::nx::{ResourceTexture, TextureElement};
+use vfl::draw::wgpu_render::texture::TextureBundle;
+use vfl::res::tex::nx::{RawTexture, ResourceTexture, TextureElement};
 use vfl::{
     color::nx::{ColorModulated, modulate},
     draw::{
@@ -15,26 +17,37 @@ use vfl::{
 };
 use wgpu::{CommandEncoder, TextureView};
 
-pub fn draw_noseline(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
+pub fn draw_noseline(
+    st: &mut State,
+    texture_view: Option<TextureBundle>,
+    encoder: &mut CommandEncoder,
+) -> texture::TextureBundle {
     let res_texture = &st.resources.texture_header;
     let file_texture = &st.resources.texture_data;
 
     let noseline_num = usize::from(st.char_info.nose_type);
 
-    let tex: image::ImageBuffer<image::Rgba<u8>, Vec<u8>> = res_texture.noseline[noseline_num]
-        .get_image(file_texture)
+    let tex = res_texture.noseline[noseline_num]
+        .get_uncompressed_bytes(file_texture)
         .unwrap()
         .unwrap();
-    let tex = DynamicImage::ImageRgba8(tex);
+
+    let output_texture = if let Some(texture_view) = texture_view {
+        texture_view
+    } else {
+        texture::TextureBundle::create_texture(&st.device, &uvec2(256, 256), "noselinetex")
+    };
 
     Rendered2dShape::render_texture_trivial(
         tex,
         modulate(ColorModulated::NoseLineShape, &st.char_info),
         None,
         st,
-        texture_view,
+        &output_texture.view,
         encoder,
     );
+
+    output_texture
 }
 
 pub fn draw_mask(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
@@ -56,23 +69,18 @@ fn load_faceline_texture(
     st: &mut State,
     texture_element: TextureElement,
     modulated: ColorModulated,
-) -> Option<(DynamicImage, ModulationIntent)> {
+) -> Option<(RawTexture, ModulationIntent)> {
     texture_element
-        .get_image(&st.resources.texture_data)
+        .get_uncompressed_bytes(&st.resources.texture_data)
         .unwrap()
-        .map(|tex| {
-            (
-                DynamicImage::ImageRgba8(tex),
-                modulate(modulated, &st.char_info),
-            )
-        })
+        .map(|bytes| (bytes, modulate(modulated, &st.char_info)))
 }
 
 // Load faceline textures in order [wrinkle, makeup, beard], and removes any that don't exist
 fn get_faceline_textures(
     st: &mut State,
     res_texture: &ResourceTexture,
-) -> Vec<(DynamicImage, ModulationIntent)> {
+) -> Vec<(RawTexture, ModulationIntent)> {
     vec![
         load_faceline_texture(
             st,
@@ -101,14 +109,6 @@ fn get_faceline_textures(
 fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
     let res_texture = st.resources.texture_header;
 
-    // let makeup_tex = res_texture.makeup[st.char_info.faceline_make as usize]
-    //     .get_image(&st.resources.texture_data)
-    //     .unwrap();
-    // let Some(makeup_tex) = makeup_tex else {
-    //     return;
-    // };
-    // let makeup_tex = image::DynamicImage::ImageRgba8(tex);
-
     let textures = get_faceline_textures(st, &res_texture);
 
     for (i, (rendered_texture, modulation)) in textures.iter().enumerate() {
@@ -121,7 +121,7 @@ fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut Comma
         Rendered2dShape::render_texture_trivial(
             rendered_texture.to_owned(),
             modulation.to_owned(),
-            opaque,
+            None,
             st,
             texture_view,
             encoder,
@@ -197,16 +197,16 @@ pub(crate) fn load_shape(
             // //     "noselinetex",
             // // );
 
-            let noseline_texture =
-                texture::Texture::create_texture(&st.device, &uvec2(256, 256), "noselinetex");
+            // let noseline_texture =
+            //     texture::TextureBundle::create_texture(&st.device, &uvec2(256, 256), "noselinetex");
 
-            draw_noseline(st, &noseline_texture.view, encoder);
+            let noseline_texture = draw_noseline(st, None, encoder);
 
             Some(noseline_texture)
         }
         Shape::Mask => {
             let mask_texture =
-                texture::Texture::create_texture(&st.device, &uvec2(512, 512), "masktex");
+                texture::TextureBundle::create_texture(&st.device, &uvec2(512, 512), "masktex");
 
             draw_mask(st, &mask_texture.view, encoder);
 
@@ -214,9 +214,8 @@ pub(crate) fn load_shape(
         }
         Shape::FaceLine => {
             let faceline_texture =
-                texture::Texture::create_texture(&st.device, &uvec2(512, 512), "facelinetex");
+                texture::TextureBundle::create_texture(&st.device, &uvec2(512, 512), "facelinetex");
 
-            println!("hi!");
             draw_faceline(st, &faceline_texture.view, encoder);
 
             Some(faceline_texture)

@@ -1,13 +1,8 @@
-use vfl::{
-    draw::{faceline, render_3d::Rendered3dShape},
-    res::shape::nx::{Shape, ShapeData},
-};
+use vfl::{draw::render_3d::Rendered3dShape, res::shape::nx::Shape};
 use wgpu::{CommandEncoder, TextureView};
 
 use crate::{State, char::load_shape};
 
-type Tex = wgpu::Texture;
-type TexOpt = Option<wgpu::Texture>;
 type Model = Rendered3dShape;
 type ModelOpt = Option<Rendered3dShape>;
 
@@ -37,12 +32,12 @@ impl CharModel {
         encoder: &mut CommandEncoder,
     ) {
         self.face_line.render(st, texture_view, encoder);
-        if let Some(hair) = self.hair.as_mut() {
-            hair.render(st, texture_view, encoder);
-        }
-        self.mask.render(st, texture_view, encoder);
+        // if let Some(hair) = self.hair.as_mut() {
+        //     hair.render(st, texture_view, encoder);
+        // }
+        // self.mask.render(st, texture_view, encoder);
 
-        self.nose_line.render(st, texture_view, encoder);
+        // self.nose_line.render(st, texture_view, encoder);
     }
 }
 

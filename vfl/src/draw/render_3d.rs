@@ -21,7 +21,7 @@ pub trait ProgramState {
     fn camera_bgl(&self) -> &wgpu::BindGroupLayout;
     fn camera_bg(&self) -> &wgpu::BindGroup;
     fn surface_fmt(&self) -> wgpu::TextureFormat;
-    fn depth_texture(&self) -> &texture::Texture;
+    fn depth_texture(&self) -> &texture::TextureBundle;
 }
 
 #[derive(Default, Debug)]
@@ -29,7 +29,7 @@ pub struct Rendered3dShape {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
     pub color: Vec4,
-    pub texture: Option<crate::draw::wgpu_render::texture::Texture>,
+    pub texture: Option<crate::draw::wgpu_render::texture::TextureBundle>,
     pub position: Vec3,
 }
 
@@ -190,7 +190,7 @@ impl Rendered3dShape {
                     conservative: false,
                 },
                 depth_stencil: Some(wgpu::DepthStencilState {
-                    format: texture::Texture::DEPTH_FORMAT,
+                    format: texture::TextureBundle::DEPTH_FORMAT,
                     depth_write_enabled: true,
                     depth_compare: wgpu::CompareFunction::Less, // 1.
                     stencil: wgpu::StencilState::default(),     // 2.

@@ -52,21 +52,25 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //     AlphaTexture = 3,
     //     LuminanceAlphaTexture = 4,
     // }
-
     if mvp.modulation_mode == 0 {
         return modulate_single_color(color);
-    } else if mvp.modulation_mode == 1 {
-        return modulate_direct_texture(color);
-    } else if mvp.modulation_mode == 2 {
-        return modulate_rgba(color);
-    } else if mvp.modulation_mode == 3 {
-        return modulate_alpha(color);
-    } else if mvp.modulation_mode == 4 {
-        return modulate_lum_alpha(color);
-    } else {
-        // OOB access, return RebeccaPurple
-        return vec4f(0.4, 0.2, 0.6, 1.0);
     }
+    return color;
+
+    // if mvp.modulation_mode == 0 {
+    //     return modulate_single_color(color);
+    // } else if mvp.modulation_mode == 1 {
+    //     return modulate_direct_texture(color);
+    // } else if mvp.modulation_mode == 2 {
+    //     return modulate_rgba(color);
+    // } else if mvp.modulation_mode == 3 {
+    //     return modulate_alpha(color);
+    // } else if mvp.modulation_mode == 4 {
+    //     return modulate_lum_alpha(color);
+    // } else {
+    //     // OOB access, return RebeccaPurple
+    //     return vec4f(0.4, 0.2, 0.6, 1.0);
+    // }
 }
 
 // Two trivial cases

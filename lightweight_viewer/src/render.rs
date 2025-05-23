@@ -1,5 +1,3 @@
-use crate::OVERLAY_REBECCA_PURPLE;
-use crate::wgpu_color_to_vec4;
 use glam::{Vec3, vec4};
 use vfl::draw::render_3d::Rendered3dShape;
 use vfl::draw::wgpu_render::texture;
@@ -15,7 +13,7 @@ pub fn shape_data_to_render_3d_shape(
     shape: Shape,
     color: usize,
     position: Vec3,
-    projected_texture: Option<texture::Texture>,
+    projected_texture: Option<texture::TextureBundle>,
 ) -> Rendered3dShape {
     let mut vertices: Vec<Vertex> = vec![];
     let tex_coords = d

@@ -1,11 +1,8 @@
-use std::rc::Rc;
-use std::sync::{Mutex, OnceLock};
-use std::{f32::consts::FRAC_PI_2, fs::File, io::BufReader, sync::Arc};
-
 use camera::{Camera, CameraUniform};
-use char::draw_char;
 use char_model::CharModel;
 use glam::{UVec2, Vec3, Vec4, uvec2, vec4};
+use std::sync::{Mutex, OnceLock};
+use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
 use vfl::res::shape::nx::ResourceShape;
 use vfl::res::tex::nx::ResourceTexture;
 use vfl::{
@@ -13,8 +10,8 @@ use vfl::{
     draw::{render_3d::ProgramState, wgpu_render::texture},
     res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
 };
+use wgpu::Features;
 use wgpu::{Backends, util::DeviceExt};
-use wgpu::{CommandEncoder, TextureView};
 use winit::{
     application::ApplicationHandler,
     event::WindowEvent,
@@ -28,6 +25,7 @@ pub mod char;
 pub mod char_model;
 pub mod render;
 
+#[allow(unused)]
 const OVERLAY_REBECCA_PURPLE: wgpu::Color = wgpu::Color {
     r: 0.1,
     g: 0.12,
@@ -65,17 +63,6 @@ pub struct ResourceData {
     shape_data: Vec<u8>,
 }
 
-struct WgpuSubState<'a> {
-    inner: (
-        wgpu::Device,
-        wgpu::Queue,
-        &'a wgpu::BindGroupLayout,
-        &'a wgpu::BindGroup,
-        wgpu::TextureFormat,
-        &'a texture::Texture,
-    ),
-}
-
 pub struct State {
     window: Arc<Window>,
     device: wgpu::Device,
@@ -84,14 +71,13 @@ pub struct State {
     surface: wgpu::Surface<'static>,
     surface_format: wgpu::TextureFormat,
     char_info: NxCharInfo,
-    char_model: Option<CharModel>,
     char_remake: bool,
     camera: Camera,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera_uniform: CameraUniform,
     camera_bind_group_layout: wgpu::BindGroupLayout,
-    depth_texture: texture::Texture,
+    depth_texture: texture::TextureBundle,
     camera_rotations: usize,
     resources: ResourceData,
 }
@@ -117,51 +103,12 @@ impl ProgramState for State {
         self.surface_format
     }
 
-    fn depth_texture(&self) -> &vfl::draw::wgpu_render::texture::Texture {
+    fn depth_texture(&self) -> &vfl::draw::wgpu_render::texture::TextureBundle {
         &self.depth_texture
     }
 }
 
-impl<'a> ProgramState for WgpuSubState<'a> {
-    fn device(&self) -> wgpu::Device {
-        self.inner.0.clone()
-    }
-
-    fn queue(&self) -> wgpu::Queue {
-        self.inner.1.clone()
-    }
-
-    fn camera_bgl(&self) -> &wgpu::BindGroupLayout {
-        self.inner.2
-    }
-
-    fn camera_bg(&self) -> &wgpu::BindGroup {
-        self.inner.3
-    }
-
-    fn surface_fmt(&self) -> wgpu::TextureFormat {
-        self.inner.4.clone()
-    }
-
-    fn depth_texture(&self) -> &texture::Texture {
-        self.inner.5
-    }
-}
-
 impl State {
-    fn wgpu_sub_state(&self) -> WgpuSubState {
-        WgpuSubState {
-            inner: (
-                self.device(),
-                self.queue(),
-                self.camera_bgl(),
-                self.camera_bg(),
-                self.surface_fmt(),
-                self.depth_texture(),
-            ),
-        }
-    }
-
     async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::PRIMARY | Backends::SECONDARY,
@@ -171,10 +118,19 @@ impl State {
             .request_adapter(&wgpu::RequestAdapterOptions::default())
             .await
             .unwrap();
-        let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
-            .await
-            .unwrap();
+
+        dbg!(
+            adapter.get_texture_format_features(wgpu::TextureFormat::Astc {
+                block: wgpu::AstcBlock::B4x4,
+                channel: wgpu::AstcChannel::Unorm
+            })
+        );
+        let device_descriptor = wgpu::DeviceDescriptor {
+            required_features: Features::TEXTURE_COMPRESSION_ASTC
+                | Features::TEXTURE_COMPRESSION_BC,
+            ..Default::default()
+        };
+        let (device, queue) = adapter.request_device(&device_descriptor).await.unwrap();
 
         let size = window.inner_size();
         let size = uvec2(size.width, size.height);
@@ -183,7 +139,8 @@ impl State {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
 
-        let depth_texture = texture::Texture::create_depth_texture(&device, &size, "depth_texture");
+        let depth_texture =
+            texture::TextureBundle::create_depth_texture(&device, &size, "depth_texture");
 
         let mut char_info =
             File::open(format!("{}/../{}", env!("CARGO_MANIFEST_DIR"), FACES[0])).unwrap();
@@ -237,8 +194,8 @@ impl State {
         let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
         let texture_header =
             ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-        let shape_data = (std::fs::read(SHAPE_MID_DAT).unwrap());
-        let texture_data = (std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap());
+        let shape_data = std::fs::read(SHAPE_MID_DAT).unwrap();
+        let texture_data = std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
 
         let resources = ResourceData {
             shape_header,
@@ -255,7 +212,6 @@ impl State {
             surface,
             surface_format,
             char_info,
-            char_model: None,
             camera,
             camera_buffer,
             camera_bind_group,
@@ -299,7 +255,7 @@ impl State {
         self.configure_surface();
 
         self.depth_texture =
-            texture::Texture::create_depth_texture(&self.device, &self.size, "depth_texture");
+            texture::TextureBundle::create_depth_texture(&self.device, &self.size, "depth_texture");
     }
 
     fn render(&mut self) {
@@ -356,6 +312,10 @@ impl State {
             let new_model = CharModel::new(self, &mut encoder);
             CHAR_MODEL.set(Mutex::new(new_model)).unwrap();
         }
+
+        // For profiling:
+        // self.char_remake = true;
+
         if self.char_remake {
             self.char_remake = false;
             // let mut encoder = self.device.create_command_encoder(&Default::default());

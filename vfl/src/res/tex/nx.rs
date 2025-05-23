@@ -34,12 +34,28 @@ pub struct TextureElement {
 #[repr(u8)]
 pub enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
-    Rb = 1,      // R8B8Unorm
-    Rgba = 2,    // R8B8G8A8Unorm
+    Rg = 1,      // R8G8Unorm
+    Rgba = 2,    // R8G8B8A8Unorm
     Bc4 = 3,     // Bc4Unorm (Compressed R)
     Bc5 = 4,     // Bc5Unorm (Compressed Rb)
     Bc7 = 5,     // Bc7Unorm (Compressed Rgba)
     Astc4x4 = 6, // Astc4x4Unorm (Compressed Rgba)
+}
+
+// pub enum RawTexture {
+//     R(Vec<u8>),
+//     Rb(Vec<u8>),
+//     Rgba(Vec<u8>),
+//     Bc4(Vec<u8>),
+//     Bc5(Vec<u8>),
+//     Bc7(Vec<u8>),
+//     Astc4x4(Vec<u8>),
+// }
+
+#[derive(Clone, Debug)]
+pub struct RawTexture {
+    pub bytes: Vec<u8>,
+    pub metadata: TextureElement,
 }
 
 impl TextureElement {
@@ -64,7 +80,7 @@ impl TextureElement {
         let tex_data = if needs_swizzling {
             let block_size = match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
                 ResourceTextureFormat::R
-                | ResourceTextureFormat::Rb
+                | ResourceTextureFormat::Rg
                 | ResourceTextureFormat::Rgba => 1,
                 ResourceTextureFormat::Bc4
                 | ResourceTextureFormat::Bc5
@@ -75,7 +91,7 @@ impl TextureElement {
             let bytes_per_pixel =
                 match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
                     ResourceTextureFormat::R
-                    | ResourceTextureFormat::Rb
+                    | ResourceTextureFormat::Rg
                     | ResourceTextureFormat::Rgba => 1,
                     ResourceTextureFormat::Bc4 => 8,
                     ResourceTextureFormat::Bc5
@@ -106,7 +122,7 @@ impl TextureElement {
     pub fn get_uncompressed_bytes(
         &self,
         file: &Vec<u8>,
-    ) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+    ) -> Result<Option<RawTexture>, Box<dyn Error>> {
         let normalize_textures = false;
 
         if self.texture.width == 0 || self.texture.height == 0 {
@@ -191,12 +207,15 @@ impl TextureElement {
             })
             .collect();
 
-        Ok(Some(tex_data_decoded))
+        Ok(Some(RawTexture {
+            bytes: tex_data_decoded,
+            metadata: self.clone(),
+        }))
     }
 
     #[cfg(feature = "draw")]
     pub fn get_image(&self, bytes: &Vec<u8>) -> Result<Option<RgbaImage>, Box<dyn Error>> {
-        let bytes = match self.get_uncompressed_bytes(bytes) {
+        let raw_texture = match self.get_uncompressed_bytes(bytes) {
             Ok(Some(bytes)) => bytes,
             Ok(None) => return Ok(None),
             Err(e) => return Err(e),
@@ -205,7 +224,7 @@ impl TextureElement {
         let img: ImageBuffer<Rgba<u8>, Vec<u8>> = image::RgbaImage::from_raw(
             self.texture.width.into(),
             self.texture.height.into(),
-            bytes,
+            raw_texture.bytes,
         )
         .unwrap();
 

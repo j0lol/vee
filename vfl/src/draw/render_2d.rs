@@ -3,13 +3,13 @@ use glam::vec3;
 use image::DynamicImage;
 use nalgebra::Matrix4;
 use wgpu::{
-    CommandEncoder, PipelineCompilationOptions, TexelCopyTextureInfo, TextureView, include_wgsl,
-    util::DeviceExt,
+    CommandEncoder, PipelineCompilationOptions, TexelCopyTextureInfo, TextureFormat, TextureView,
+    include_wgsl, util::DeviceExt,
 };
 
 use crate::{
     color::nx::{ModulationIntent, modulate},
-    res::tex::nx::ResourceTextureFormat,
+    res::tex::nx::{RawTexture, ResourceTexture, ResourceTextureFormat, TextureElement},
 };
 
 use super::{
@@ -25,15 +25,64 @@ const NON_REPLACEMENT: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
 pub struct Rendered2dShape {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,
-    pub tex: DynamicImage,
+    pub tex: RawTexture,
     pub mvp_matrix: Matrix4<f32>,
     pub modulation: ModulationIntent,
     pub opaque: Option<Color>,
 }
 
+pub fn texture_format_to_wgpu(tex: TextureElement) -> TextureFormat {
+    use TextureFormat as WgpuTextureFormat;
+    let format = ResourceTextureFormat::try_from(tex.texture.format).unwrap();
+    match format {
+        ResourceTextureFormat::R => WgpuTextureFormat::R8Unorm,
+        ResourceTextureFormat::Rg => WgpuTextureFormat::Rg8Unorm,
+        ResourceTextureFormat::Rgba => WgpuTextureFormat::Rgba8Unorm,
+        ResourceTextureFormat::Bc4 => WgpuTextureFormat::Bc4RUnorm,
+        ResourceTextureFormat::Bc5 => WgpuTextureFormat::Bc5RgUnorm,
+        ResourceTextureFormat::Bc7 => WgpuTextureFormat::Bc7RgbaUnorm,
+        ResourceTextureFormat::Astc4x4 => WgpuTextureFormat::Astc {
+            block: wgpu::AstcBlock::B4x4,
+            channel: wgpu::AstcChannel::Unorm,
+        },
+    }
+}
+
+pub fn texture_format_buffer_layout(tex: TextureElement) -> wgpu::TexelCopyBufferLayout {
+    use ResourceTextureFormat as Rtf;
+    const BC3_BYTES_PER_BLOCK: u32 = 16;
+    const BC3_PIXELS_PER_BLOCK: u32 = 4;
+    const BC4_BYTES_PER_BLOCK: u32 = 8;
+
+    let format = Rtf::try_from(tex.texture.format).unwrap();
+
+    match format {
+        Rtf::R => wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(u32::from(tex.texture.width)),
+            rows_per_image: None,
+        },
+        Rtf::Rg => wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(2 * u32::from(tex.texture.width)),
+            rows_per_image: None,
+        },
+        Rtf::Astc4x4 | Rtf::Bc7 | Rtf::Bc4 | Rtf::Rgba => wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some((16 / 4) * u32::from(tex.texture.width)),
+            rows_per_image: None,
+        },
+        Rtf::Bc5 => wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some((32 / 4) * u32::from(tex.texture.width)),
+            rows_per_image: None,
+        },
+    }
+}
+
 impl Rendered2dShape {
     pub fn render_texture_trivial(
-        rendered_texture: DynamicImage,
+        rendered_texture: RawTexture,
         modulation: ModulationIntent,
         opaque: Option<Color>,
         st: &mut impl ProgramState,
@@ -84,11 +133,9 @@ impl Rendered2dShape {
                 usage: wgpu::BufferUsages::INDEX,
             });
 
-        let shape_texture_rgba = self.tex.to_rgba8();
-        let shape_texture_dimensions = shape_texture_rgba.dimensions();
         let shape_texture_size = wgpu::Extent3d {
-            width: shape_texture_dimensions.0,
-            height: shape_texture_dimensions.1,
+            width: u32::from(self.tex.metadata.texture.width),
+            height: u32::from(self.tex.metadata.texture.height),
             depth_or_array_layers: 1,
         };
         let shape_diffuse_texture = st.device().create_texture(&wgpu::TextureDescriptor {
@@ -96,10 +143,13 @@ impl Rendered2dShape {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: st.surface_fmt().add_srgb_suffix(),
+            format: texture_format_to_wgpu(self.tex.metadata),
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             label: Some("diffuse_texture"),
-            view_formats: &[st.surface_fmt()],
+            view_formats: &[
+                texture_format_to_wgpu(self.tex.metadata),
+                texture_format_to_wgpu(self.tex.metadata).add_srgb_suffix(),
+            ],
         });
 
         st.queue().write_texture(
@@ -109,17 +159,16 @@ impl Rendered2dShape {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            &shape_texture_rgba,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * shape_texture_dimensions.0),
-                rows_per_image: Some(shape_texture_dimensions.1),
-            },
+            &self.tex.bytes,
+            texture_format_buffer_layout(self.tex.metadata),
             shape_texture_size,
         );
 
         let shape_diffuse_texture_view =
-            shape_diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            shape_diffuse_texture.create_view(&wgpu::TextureViewDescriptor {
+                format: Some(texture_format_to_wgpu(self.tex.metadata)),
+                ..Default::default()
+            });
         let shape_diffuse_sampler = st.device().create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
