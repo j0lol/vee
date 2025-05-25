@@ -198,6 +198,12 @@ pub(crate) fn load_shape(
         _ => Vec3::ZERO,
     };
 
+    let scale = match shape_kind {
+        Shape::Glasses => Vec3::splat(0.15 * f32::from(st.char_info.glass_scale) + 0.4), // RFL_Model.c :784
+        Shape::Nose => Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4), // RFL_Model.c :705
+        _ => Vec3::ONE,
+    };
+
     // Closure to reduce boilerplate for writing out textures.
     let mut draw_tex = |func: fn(&mut State, &TextureView, &mut CommandEncoder), size: UVec2| {
         let texture = texture::Texture::create_texture(
@@ -227,6 +233,7 @@ pub(crate) fn load_shape(
         shape_kind,
         usize::from(shape_color),
         position,
+        scale,
         projected_texture,
     ))
 }
@@ -237,6 +244,7 @@ pub(crate) fn mesh_to_model(
     shape: Shape,
     color: usize,
     position: Vec3,
+    scale: Vec3,
     projected_texture: Option<texture::Texture>,
 ) -> Rendered3dShape {
     let mut vertices: Vec<Vertex> = vec![];
@@ -266,5 +274,6 @@ pub(crate) fn mesh_to_model(
         },
         texture: projected_texture,
         position,
+        scale,
     }
 }

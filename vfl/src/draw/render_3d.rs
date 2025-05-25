@@ -13,6 +13,8 @@ struct CharShapeUniform {
     diffuse_color: [f32; 4],
     position: [f32; 3],
     _pad: f32,
+    scale: [f32; 3],
+    _pad2: f32,
 }
 
 pub trait ProgramState {
@@ -31,6 +33,7 @@ pub struct Rendered3dShape {
     pub color: Vec4,
     pub texture: Option<crate::draw::wgpu_render::texture::Texture>,
     pub position: Vec3,
+    pub scale: Vec3,
 }
 
 impl Rendered3dShape {
@@ -61,6 +64,8 @@ impl Rendered3dShape {
             diffuse_color: self.color.into(),
             position: self.position.into(),
             _pad: 0.0,
+            scale: self.scale.into(),
+            _pad2: 0.0,
         };
         let char_shape_buffer = st
             .device()
@@ -123,13 +128,9 @@ impl Rendered3dShape {
             bind_group_layouts.push(&projected_texture_bind_group_layout);
         }
 
-        let shader_module = if self.texture.is_some() {
-            st.device()
-                .create_shader_module(include_wgsl!("shader-3d-texture.wgsl"))
-        } else {
-            st.device()
-                .create_shader_module(include_wgsl!("shader-3d.wgsl"))
-        };
+        let shader_module = st
+            .device()
+            .create_shader_module(include_wgsl!("shader_3d.wgsl"));
 
         // Optional projected texture
         let projected_texture_bind_group = self.texture.as_ref().map(|texture| {
@@ -169,7 +170,11 @@ impl Rendered3dShape {
                 },
                 fragment: Some(wgpu::FragmentState {
                     module: &shader_module,
-                    entry_point: Some("fs_main"),
+                    entry_point: if self.texture.is_some() {
+                        Some("fs_main")
+                    } else {
+                        Some("fs_color_only")
+                    },
                     targets: &[Some(wgpu::ColorTargetState {
                         format: st.surface_fmt().add_srgb_suffix(),
                         blend: Some(BlendState::ALPHA_BLENDING),

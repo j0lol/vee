@@ -6,9 +6,10 @@ var<uniform> camera: CameraUniform;
 
 struct CharShapeUniform {
     color: vec4<f32>,
-    position: vec3<f32>
-
+    position: vec3<f32>,
+    scale: vec3<f32>
 }
+
 @group(1) @binding(0)
 var<uniform> char_shape: CharShapeUniform;
 
@@ -38,7 +39,7 @@ fn vs_main(
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
     out.world_normal = model.normal;
-    var world_position: vec4<f32> = vec4<f32>(model.position + char_shape.position, 1.0);
+    var world_position: vec4<f32> = vec4<f32>((char_shape.scale * model.position) + char_shape.position, 1.0);
     out.world_position = world_position.xyz;
     out.clip_position = camera.view_proj * world_position;
     return out;
@@ -51,12 +52,24 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let sample_position = in.tex_coords;
     let tex_color = textureSample(t_diffuse, s_diffuse, sample_position);
 
-    // if tex_color.a == 0.0 {
-    //    discard;
-    // }
+    let color = mix(char_shape.color, tex_color, tex_color.a);
 
-    // return tex_color;
+    if color.a == 0.0 {
+       discard;
+    }
 
-    return mix(char_shape.color, tex_color, tex_color.a);
+    return color;
 
+}
+
+
+@fragment
+fn fs_color_only(in: VertexOutput) -> @location(0) vec4<f32> {
+    let color = char_shape.color;
+
+    if color.a == 0.0 {
+        discard;
+    }
+
+    return color;
 }
