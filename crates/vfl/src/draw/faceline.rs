@@ -1,4 +1,4 @@
-use super::wgpu_render::Vertex;
+use super::Vertex;
 
 pub fn trivial_quad() -> (Vec<Vertex>, Vec<u32>) {
     (
@@ -30,25 +30,26 @@ pub fn trivial_quad() -> (Vec<Vertex>, Vec<u32>) {
 pub fn bgr_to_rgb([b, g, r, a]: [f32; 4]) -> [f32; 4] {
     [r, g, b, a]
 }
+
 #[cfg(test)]
 mod tests {
-    use crate::charinfo;
-    use crate::charinfo::nx::NxCharInfo;
-    use crate::color::nx::modulate;
-    use crate::draw::faceline::{bgr_to_rgb, trivial_quad};
-    use crate::draw::render_2d::Rendered2dShape;
-    use crate::draw::render_3d::ProgramState;
-    use crate::draw::wgpu_render::{HeadlessRenderer, Vertex, model_view_matrix, quad, texture};
-    use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
-    use crate::res::tex::nx::{ResourceTexture, ResourceTextureFormat, TEXTURE_MID_SRGB_DAT};
-    use binrw::BinRead;
-    use glam::{uvec2, vec3};
-    use nalgebra::Matrix4;
-    use std::error::Error;
-    use std::{fs::File, io::BufReader};
-    use wgpu::CommandEncoder;
+    // use crate::charinfo;
+    // use crate::charinfo::nx::NxCharInfo;
+    // use crate::color::nx::modulate;
+    // use crate::draw::faceline::{bgr_to_rgb, trivial_quad};
+    // use crate::draw::render_2d::Model2d;
+    // use crate::draw::render_3d::ProgramState;
+    // use crate::draw::wgpu_render::{HeadlessRenderer, Vertex, model_view_matrix, quad, texture};
+    // use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
+    // use crate::res::tex::nx::{ResourceTexture, ResourceTextureFormat, TEXTURE_MID_SRGB_DAT};
+    // use binrw::BinRead;
+    // use glam::{uvec2, vec3};
+    // use nalgebra::Matrix4;
+    // use std::error::Error;
+    // use std::{fs::File, io::BufReader};
+    // use wgpu::CommandEncoder;
 
-    type R = Result<(), Box<dyn Error>>;
+    // type R = Result<(), Box<dyn Error>>;
 
     // #[test]
     // fn faceline_makeup() -> R {

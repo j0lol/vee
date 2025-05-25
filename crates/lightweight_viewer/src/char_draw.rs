@@ -1,18 +1,16 @@
 use crate::state::State;
 use glam::{UVec2, Vec3, uvec2, vec3, vec4};
 use image::DynamicImage;
+use vee_wgpu::texture::TextureBundle;
+use vee_wgpu::{Model3d, ProgramState};
 use vfl::color::nx::ModulationIntent;
-use vfl::color::nx::linear::FACELINE_COLOR;
-use vfl::draw::render_3d::Rendered3dShape;
-use vfl::draw::wgpu_render::Vertex;
+use vfl::draw::render_3d::GenericModel3d;
+use vfl::draw::{DrawableTexture, Vertex};
 use vfl::res::shape::nx::ShapeData;
 use vfl::res::tex::nx::{ResourceTexture, TextureElement};
 use vfl::{
     color::nx::{ColorModulated, modulate},
-    draw::{
-        render_2d::Rendered2dShape,
-        wgpu_render::{RenderContext, texture},
-    },
+    draw::wgpu_render::RenderContext,
     res::shape::nx::{GenericResourceShape, Shape},
 };
 use wgpu::{CommandEncoder, TextureView};
@@ -33,27 +31,25 @@ pub(crate) fn draw_noseline(
         .unwrap();
     let tex = DynamicImage::ImageRgba8(tex);
 
-    Rendered2dShape::render_texture_trivial(
-        tex,
-        modulate(ColorModulated::NoseLineShape, &st.char_info),
-        None,
-        st,
+    st.draw_texture(
+        DrawableTexture {
+            rendered_texture: tex,
+            modulation: modulate(ColorModulated::NoseLineShape, &st.char_info),
+            opaque: None,
+        },
         texture_view,
         encoder,
-        Some("noseline".to_owned()),
     );
 }
 
 pub(crate) fn draw_mask(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
-    let res_shape = &st.resources.shape_header;
     let res_texture = &st.resources.texture_header;
     let file_texture = &st.resources.texture_data;
 
-    let render_context =
-        RenderContext::new(&st.char_info.clone(), res_texture, res_shape, file_texture).unwrap();
+    let render_context = RenderContext::new(&st.char_info.clone(), res_texture, file_texture);
 
-    for shape in render_context.shape {
-        shape.render(st, texture_view, encoder);
+    for mut shape in render_context.shape {
+        st.draw_model_2d(&mut shape, texture_view, encoder);
     }
 }
 
@@ -110,21 +106,21 @@ fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut Comma
 
     let textures = get_faceline_textures(st, &res_texture);
 
-    for (i, (rendered_texture, modulation)) in textures.iter().enumerate() {
+    for (i, (rendered_texture, modulation)) in textures.into_iter().enumerate() {
         // Check if we are the first to be rendered out, then add an opaque background.
         // We don't want an opaque redraw happening over our other faceline textures.
         let opaque = (i == 0).then_some(
             vfl::color::nx::linear::FACELINE_COLOR[usize::from(st.char_info.faceline_color)],
         );
 
-        Rendered2dShape::render_texture_trivial(
-            rendered_texture.to_owned(),
-            modulation.to_owned(),
-            opaque,
-            st,
+        st.draw_texture(
+            DrawableTexture {
+                rendered_texture,
+                modulation,
+                opaque,
+            },
             texture_view,
             encoder,
-            Some("faceline".to_owned()),
         );
     }
 }
@@ -142,14 +138,14 @@ fn draw_glasses(st: &mut State, texture_view: &TextureView, encoder: &mut Comman
         return;
     };
 
-    Rendered2dShape::render_texture_trivial(
-        rendered_texture,
-        modulation,
-        None,
-        st,
+    st.draw_texture(
+        DrawableTexture {
+            rendered_texture,
+            modulation,
+            opaque: None,
+        },
         texture_view,
         encoder,
-        Some("Glasses".to_owned()),
     );
 }
 
@@ -159,7 +155,7 @@ pub(crate) fn load_shape(
     shape_color: u8,
     st: &mut State,
     encoder: &mut CommandEncoder,
-) -> Option<Rendered3dShape> {
+) -> Option<Model3d> {
     let res_shape = &st.resources.shape_header;
 
     let GenericResourceShape::FaceLineTransform(faceline_transform) = res_shape.index_by_shape(
@@ -209,7 +205,7 @@ pub(crate) fn load_shape(
 
     // Closure to reduce boilerplate for writing out textures.
     let mut draw_tex = |func: fn(&mut State, &TextureView, &mut CommandEncoder), size: UVec2| {
-        let texture = texture::Texture::create_texture(
+        let texture = TextureBundle::create_texture(
             &st.device,
             &size,
             &format!("projected texture {func:?}"),
@@ -248,8 +244,8 @@ pub(crate) fn mesh_to_model(
     color: usize,
     position: Vec3,
     scale: Vec3,
-    projected_texture: Option<texture::Texture>,
-) -> Rendered3dShape {
+    projected_texture: Option<TextureBundle>,
+) -> Model3d {
     let mut vertices: Vec<Vertex> = vec![];
     let tex_coords = d
         .uvs
@@ -266,7 +262,7 @@ pub(crate) fn mesh_to_model(
 
     let indices = d.indices.iter().map(|x| u32::from(*x)).collect();
 
-    Rendered3dShape {
+    GenericModel3d {
         vertices,
         indices,
         color: match shape {

@@ -1,21 +1,21 @@
-use crate::{
-    res::shape::nx::ResourceCommonAttribute,
-    utils::{ReadSeek, inflate_bytes, read_byte_slice},
-};
+use crate::{res::shape::nx::ResourceCommonAttribute, utils::inflate_bytes};
 use binrw::BinRead;
 use image::{ImageBuffer, Rgba, RgbaImage};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::error::Error;
 use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
-pub const TEXTURE_MID_SRGB_DAT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/NXTextureMidSRGB.dat");
+pub const TEXTURE_MID_SRGB_DAT: &str = concat!(
+    env!("CARGO_WORKSPACE_DIR"),
+    "/resources_here/NXTextureMidSRGB.dat"
+);
 
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceTextureAttribute {
     alignment: u32,
     pub width: u16,
     pub height: u16,
-    pub format: u8,
+    pub format: ResourceTextureFormat,
     mip_count: u8,
     tile_mode: u8,
     pad: [u8; 1],
@@ -30,7 +30,8 @@ pub struct TextureElement {
 // Format rundown:
 // https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/#comparison-table
 
-#[derive(IntoPrimitive, TryFromPrimitive, Debug)]
+#[derive(IntoPrimitive, TryFromPrimitive, Debug, Clone, Copy, BinRead)]
+#[br(repr = u8)]
 #[repr(u8)]
 pub enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
@@ -43,50 +44,37 @@ pub enum ResourceTextureFormat {
 }
 
 impl TextureElement {
-    pub fn get_texture_bytes(&self, file: &Vec<u8>) -> Result<Vec<u8>, Box<dyn Error>> {
+    /// Gets the raw bytes of a texture. Takes an argument of the resource file.
+    /// # Errors
+    /// - Encounters texture data that isn't Zlib deflated
+    /// - Deswizzling texture data fails
+    pub fn get_texture_bytes(&self, file: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+        use ResourceTextureFormat as Rtf;
+
         let start: usize = self.common.offset as usize;
         let end: usize = self.common.offset as usize + self.common.size_compressed as usize;
 
-        // println!("texload");
-
         let range = start..end;
-
-        // let tex_data = read_byte_slice(
-        //     file,
-        //     self.common.offset.into(),
-        //     self.common.size_compressed.try_into()?,
-        // )?;
 
         let tex_data = inflate_bytes(&file[range])?;
 
         let needs_swizzling = self.texture.tile_mode == 0;
 
         let tex_data = if needs_swizzling {
-            let block_size = match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
-                ResourceTextureFormat::R
-                | ResourceTextureFormat::Rb
-                | ResourceTextureFormat::Rgba => 1,
-                ResourceTextureFormat::Bc4
-                | ResourceTextureFormat::Bc5
-                | ResourceTextureFormat::Bc7
-                | ResourceTextureFormat::Astc4x4 => 4,
+            let block_size = match self.texture.format {
+                Rtf::R | Rtf::Rb | Rtf::Rgba => 1,
+                Rtf::Bc4 | Rtf::Bc5 | Rtf::Bc7 | Rtf::Astc4x4 => 4,
             };
 
-            let bytes_per_pixel =
-                match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
-                    ResourceTextureFormat::R
-                    | ResourceTextureFormat::Rb
-                    | ResourceTextureFormat::Rgba => 1,
-                    ResourceTextureFormat::Bc4 => 8,
-                    ResourceTextureFormat::Bc5
-                    | ResourceTextureFormat::Bc7
-                    | ResourceTextureFormat::Astc4x4 => 16,
-                };
+            let bytes_per_pixel = match self.texture.format {
+                Rtf::R | Rtf::Rb | Rtf::Rgba => 1,
+                Rtf::Bc4 => 8,
+                Rtf::Bc5 | Rtf::Bc7 | Rtf::Astc4x4 => 16,
+            };
 
             let height = self.texture.height.into();
             let block_height = block_height_mip0(div_round_up(height, block_size));
 
-            // panic!("{}", tex_data.len());
             deswizzle_block_linear(
                 div_round_up(self.texture.width.into(), block_size),
                 div_round_up(self.texture.height.into(), block_size),
@@ -102,11 +90,15 @@ impl TextureElement {
         Ok(tex_data)
     }
 
+    /// Gets the raw bytes of a texture. Takes an argument of the resource file.
+    /// # Errors
+    /// - Encounters texture data that isn't Zlib deflated
+    /// - Deswizzling texture data fails
+    /// - Texture decompression fails
+    /// # Panics
+    /// - If texture data is empty
     #[cfg(feature = "draw")]
-    pub fn get_uncompressed_bytes(
-        &self,
-        file: &Vec<u8>,
-    ) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
+    pub fn get_uncompressed_bytes(&self, file: &[u8]) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
         let normalize_textures = false;
 
         if self.texture.width == 0 || self.texture.height == 0 {
@@ -118,7 +110,7 @@ impl TextureElement {
 
         let mut tex_data_decoded =
             vec![0; (u32::from(self.texture.width) * u32::from(self.texture.height)) as usize];
-        match ResourceTextureFormat::try_from(self.texture.format).unwrap() {
+        match self.texture.format {
             ResourceTextureFormat::Bc7 => {
                 texture2ddecoder::decode_bc7(
                     &tex_data,
@@ -195,8 +187,16 @@ impl TextureElement {
         Ok(Some(tex_data_decoded))
     }
 
+    /// Gets the raw bytes of a texture. Takes an argument of the resource file.
+    /// # Errors
+    /// - Encounters texture data that isn't Zlib deflated
+    /// - Deswizzling texture data fails
+    /// - Texture decompression fails
+    /// # Panics
+    /// - If texture data is empty
+    /// - If calculated image container is too small
     #[cfg(feature = "draw")]
-    pub fn get_image(&self, bytes: &Vec<u8>) -> Result<Option<RgbaImage>, Box<dyn Error>> {
+    pub fn get_image(&self, bytes: &[u8]) -> Result<Option<RgbaImage>, Box<dyn Error>> {
         let bytes = match self.get_uncompressed_bytes(bytes) {
             Ok(Some(bytes)) => bytes,
             Ok(None) => return Ok(None),

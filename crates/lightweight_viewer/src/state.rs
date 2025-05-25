@@ -5,11 +5,12 @@ use glam::{UVec2, Vec3, uvec2};
 use nest_struct::nest_struct;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
+use vee_wgpu::ProgramState;
+use vee_wgpu::texture::TextureBundle;
 use vfl::res::shape::nx::ResourceShape;
 use vfl::res::tex::nx::ResourceTexture;
 use vfl::{
     charinfo::nx::{BinRead, NxCharInfo},
-    draw::{render_3d::ProgramState, wgpu_render::texture},
     res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
 };
 use wgpu::{Backends, util::DeviceExt};
@@ -58,7 +59,7 @@ pub struct State {
     pub(crate) camera_bind_group: wgpu::BindGroup,
     pub(crate) camera_uniform: CameraUniform,
     pub(crate) camera_bind_group_layout: wgpu::BindGroupLayout,
-    pub(crate) depth_texture: texture::Texture,
+    pub(crate) depth_texture: TextureBundle,
     pub(crate) camera_rotations: usize,
     pub(crate) resources: ResourceData! {
         pub(crate) texture_header: ResourceTexture,
@@ -91,10 +92,14 @@ impl State {
         let cap = surface.get_capabilities(&adapter);
         let surface_format = cap.formats[0];
 
-        let depth_texture = texture::Texture::create_depth_texture(&device, &size, "depth_texture");
+        let depth_texture = TextureBundle::create_depth_texture(&device, &size, "depth_texture");
 
-        let mut char_info =
-            File::open(format!("{}/../{}", env!("CARGO_MANIFEST_DIR"), FACES[0])).unwrap();
+        let mut char_info = File::open(format!(
+            "{}/resources_here/{}",
+            env!("CARGO_WORKSPACE_DIR"),
+            FACES[0]
+        ))
+        .unwrap();
         let char_info = NxCharInfo::read(&mut char_info).unwrap();
 
         let camera = Camera {
@@ -274,7 +279,7 @@ impl State {
         self.configure_surface();
 
         self.depth_texture =
-            texture::Texture::create_depth_texture(&self.device, &self.size, "depth_texture");
+            TextureBundle::create_depth_texture(&self.device, &self.size, "depth_texture");
     }
 
     pub fn update(&mut self) {
@@ -296,8 +301,8 @@ impl State {
             self.camera_rotations += 1;
 
             let mut char_info = File::open(format!(
-                "{}/../{}",
-                env!("CARGO_MANIFEST_DIR"),
+                "{}/resources_here/{}",
+                env!("CARGO_WORKSPACE_DIR"),
                 FACES[self.camera_rotations % FACES.len()]
             ))
             .unwrap();
@@ -340,7 +345,7 @@ impl ProgramState for State {
         self.surface_format
     }
 
-    fn depth_texture(&self) -> &vfl::draw::wgpu_render::texture::Texture {
+    fn depth_texture(&self) -> &TextureBundle {
         &self.depth_texture
     }
 }

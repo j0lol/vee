@@ -80,11 +80,7 @@ pub struct MaskFaceParts {
 }
 
 impl MaskFaceParts {
-    pub fn init_glasses(
-        info: &NxCharInfo,
-        resolution: f32,
-        nose_translate: [f32; 3],
-    ) -> [FacePart; 2] {
+    pub fn init_glasses(info: &NxCharInfo, resolution: f32) -> [FacePart; 2] {
         let resolution = resolution / 64.0;
 
         let glass_y = TEX_EYE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.glass_y);
@@ -226,12 +222,12 @@ impl MaskFaceParts {
 
 #[cfg(test)]
 mod tests {
-    use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
-    use binrw::BinRead;
-    use std::error::Error;
-    use std::{fs::File, io::BufReader};
+    // use crate::res::shape::nx::{ResourceShape, SHAPE_MID_DAT};
+    // use binrw::BinRead;
+    // use std::error::Error;
+    // use std::{fs::File, io::BufReader};
 
-    type R = Result<(), Box<dyn Error>>;
+    // type R = Result<(), Box<dyn Error>>;
 
     // #[test]
     // fn mask_shape() -> R {

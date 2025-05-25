@@ -1,2 +1,6 @@
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"
+
+# https://stackoverflow.com/a/78606410
+[env]
+CARGO_WORKSPACE_DIR = { value = "", relative = true }

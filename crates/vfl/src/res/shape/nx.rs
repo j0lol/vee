@@ -1,12 +1,12 @@
-use crate::utils::{ReadSeek, Vec3PackedSnorm, inflate_bytes, read_byte_slice, u16_to_f32};
+use crate::utils::{Vec3PackedSnorm, inflate_bytes, u16_to_f32};
 use binrw::{BinRead, Endian};
-use std::fs::File;
 use std::{
     error::Error,
     io::{Cursor, Read, Seek, SeekFrom},
 };
 
-pub const SHAPE_MID_DAT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/ShapeMid.dat");
+pub const SHAPE_MID_DAT: &str =
+    concat!(env!("CARGO_WORKSPACE_DIR"), "/resources_here/ShapeMid.dat");
 #[cfg(target_family = "wasm")]
 pub const SHAPE_MID_DAT_LOADED: &[u8] = include_bytes!("../../../ShapeMid.dat");
 

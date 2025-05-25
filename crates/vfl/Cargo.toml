@@ -29,7 +29,7 @@ nalgebra = { version = "0.33.2", features = ["mint"], optional = true }
 pollster = { version = "0.4.0", optional = true }
 tegra_swizzle = { version = "0.4.0", optional = true }
 texture2ddecoder = { version = "0.1.2", optional = true }
-wgpu = { version = "25", optional = true }
+# wgpu = { version = "25", optional = true }
 futures-intrusive = { version = "0.5.0", optional = true }
 
 # feat: gltf
@@ -42,7 +42,7 @@ image-compare = "0.4.1"
 res = ["dep:image", "dep:tegra_swizzle", "dep:flate2"]
 draw = [
     "res",
-    "dep:wgpu",
+    # "dep:wgpu",
     "dep:futures-intrusive",
     "dep:texture2ddecoder",
     "dep:pollster",

@@ -115,7 +115,7 @@ pub mod nx {
     /// This function will give you color modulations for each needed texture or shape.
     /// When a channel is not modulated, it will return [NaN, NaN, NaN, NaN]
     /// EG: An "R" format texture does not need G&B modulation
-    /// Ref: https://github.com/ariankordi/ffl/blob/97eecdf3688f92c4c95cecf5d6ab3e84c0ee42c0/src/FFLiModulate.cpp
+    /// Ref: <https://github.com/ariankordi/ffl/blob/97eecdf3688f92c4c95cecf5d6ab3e84c0ee42c0/src/FFLiModulate.cpp>
     #[allow(clippy::must_use_candidate)]
     pub fn modulate(class: ColorModulated, char: &NxCharInfo) -> ModulationIntent {
         use ModulationMode as M;

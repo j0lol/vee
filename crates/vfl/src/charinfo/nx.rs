@@ -75,7 +75,10 @@ mod tests {
 
     #[test]
     fn mii_deser() -> R {
-        let mut mii = File::open(concat!(env!("CARGO_MANIFEST_DIR"), "/../j0.charinfo"))?;
+        let mut mii = File::open(concat!(
+            env!("CARGO_WORKSPACE_DIR"),
+            "/resources_here/j0.charinfo"
+        ))?;
 
         let mii = NxCharInfo::read(&mut mii)?;
 

@@ -1,0 +1,14 @@
+[package]
+name = "vee_wgpu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+wgpu = "25"
+vfl = { path = "../vfl", features = ["draw", "res"] }
+bytemuck = "1.23.0"
+glam = "0.30.3"
+image = "0.25.6"
+nalgebra = "0.33.2"
+pollster = "0.4.0"
+futures-intrusive = "0.5.0"

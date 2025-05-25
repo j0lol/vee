@@ -1,10 +1,11 @@
 use crate::{char_draw::load_shape, state::State};
-use vfl::{draw::render_3d::Rendered3dShape, res::shape::nx::Shape};
+use vee_wgpu::{Model3d, ProgramState};
+use vfl::res::shape::nx::Shape;
 use wgpu::{CommandEncoder, TextureView};
 
 // I want to rename these things eventually...
-type Model = Rendered3dShape;
-type ModelOpt = Option<Rendered3dShape>;
+type Model = Model3d;
+type ModelOpt = Option<Model3d>;
 
 /// A bundle of models that in totality represent a character.
 #[derive(Debug)]
@@ -35,20 +36,22 @@ impl CharModel {
         texture_view: &TextureView,
         encoder: &mut CommandEncoder,
     ) {
-        self.face_line.render(st, texture_view, encoder);
+        st.draw_model_3d(&mut self.face_line, texture_view, encoder);
+
         if let Some(hair) = self.hair.as_mut() {
-            hair.render(st, texture_view, encoder);
+            st.draw_model_3d(hair, texture_view, encoder);
         }
-        self.mask.render(st, texture_view, encoder);
+
+        st.draw_model_3d(&mut self.mask, texture_view, encoder);
 
         if let Some(nose) = self.nose.as_mut() {
-            nose.render(st, texture_view, encoder);
+            st.draw_model_3d(nose, texture_view, encoder);
         }
 
-        self.nose_line.render(st, texture_view, encoder);
+        st.draw_model_3d(&mut self.nose_line, texture_view, encoder);
 
         if let Some(glasses) = self.glasses.as_mut() {
-            glasses.render(st, texture_view, encoder);
+            st.draw_model_3d(glasses, texture_view, encoder);
         }
     }
 }

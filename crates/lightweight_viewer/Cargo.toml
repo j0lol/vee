@@ -8,6 +8,7 @@ pollster = "0.4"
 wgpu = "25.0.0"
 winit = { version = "0.30.11" }
 vfl = { path = "../vfl", features = ["res", "draw"] }
+vee_wgpu = { path = "../vee_wgpu" }
 glam = { version = "0.30.3", features = ["bytemuck"] }
 bytemuck = "1.23.0"
 image = "0.25.6"

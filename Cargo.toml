@@ -1,11 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["bevy_viewer", "lightweight_viewer", "vfl"]
+members = [
+    # bevy viewer is on the backburner
+    # "crates/bevy_viewer",
+    "crates/lightweight_viewer",
+    "crates/vee_wgpu",
+    "crates/vfl",
+]
 
-# Enable a small amount of optimization in the dev profile.
-#[profile.dev]
-#opt-level = 1
-
-# Enable a large amount of optimization in the dev profile for dependencies.
-#[profile.dev.package."*"]
-#opt-level = 3
+[workspace.dependencies]
+vfl = { path = "crates/vfl" }
