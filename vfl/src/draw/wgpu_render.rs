@@ -122,6 +122,7 @@ impl RenderContext {
                     mvp_matrix: mtx,
                     modulation: modulate(modulated, char),
                     opaque: None,
+                    label: Some(format!("{modulated:?}")),
                 }
             };
 
@@ -190,6 +191,7 @@ impl RenderContext {
                     mvp_matrix: mtx,
                     modulation: modulate(modulated, char),
                     opaque: None,
+                    label: Some(format!("{modulated:?}")),
                 }
             };
 
@@ -240,6 +242,7 @@ impl RenderContext {
             mvp_matrix: mtx,
             modulation: modulate(ColorModulated::Glass, &char),
             opaque: None,
+            label: Some("Glass L".to_owned()),
         };
 
         let glass_r = glasses[1];
@@ -261,6 +264,7 @@ impl RenderContext {
             mvp_matrix: mtx,
             modulation: modulate(ColorModulated::Glass, &char),
             opaque: None,
+            label: Some("Glass R".to_owned()),
         };
 
         Ok(RenderContext {

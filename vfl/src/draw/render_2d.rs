@@ -29,6 +29,7 @@ pub struct Rendered2dShape {
     pub mvp_matrix: Matrix4<f32>,
     pub modulation: ModulationIntent,
     pub opaque: Option<Color>,
+    pub label: Option<String>,
 }
 
 impl Rendered2dShape {
@@ -39,6 +40,7 @@ impl Rendered2dShape {
         st: &mut impl ProgramState,
         texture_view: &TextureView,
         encoder: &mut CommandEncoder,
+        label: Option<String>,
     ) {
         let (vertices, indices) = trivial_quad();
 
@@ -56,6 +58,7 @@ impl Rendered2dShape {
             mvp_matrix,
             modulation,
             opaque,
+            label,
         };
 
         rendered_2d_shape.render(st, texture_view, encoder);
@@ -68,6 +71,10 @@ impl Rendered2dShape {
         texture_view: &TextureView,
         encoder: &mut CommandEncoder,
     ) {
+        if let Some(ref label) = self.label {
+            encoder.push_debug_group(&format!("Texture {label}"));
+        }
+
         let vertex_buffer = st
             .device()
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -96,7 +103,7 @@ impl Rendered2dShape {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: st.surface_fmt().add_srgb_suffix(),
+            format: st.surface_fmt(),
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             label: Some("diffuse_texture"),
             view_formats: &[st.surface_fmt()],
@@ -237,7 +244,7 @@ impl Rendered2dShape {
                     module: &shader_module,
                     entry_point: Some("fs_main"),
                     targets: &[Some(wgpu::ColorTargetState {
-                        format: st.surface_fmt().add_srgb_suffix(),
+                        format: st.surface_fmt(),
                         blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
@@ -299,6 +306,10 @@ impl Rendered2dShape {
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
             render_pass.draw_indexed(0..self.indices.len().try_into().unwrap(), 0, 0..1);
+        }
+
+        if self.label.is_some() {
+            encoder.pop_debug_group();
         }
     }
 }

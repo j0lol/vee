@@ -40,6 +40,7 @@ pub(crate) fn draw_noseline(
         st,
         texture_view,
         encoder,
+        Some("noseline".to_owned()),
     );
 }
 
@@ -113,7 +114,7 @@ fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut Comma
         // Check if we are the first to be rendered out, then add an opaque background.
         // We don't want an opaque redraw happening over our other faceline textures.
         let opaque = (i == 0).then_some(
-            vfl::color::nx::srgb::FACELINE_COLOR[usize::from(st.char_info.faceline_color)],
+            vfl::color::nx::linear::FACELINE_COLOR[usize::from(st.char_info.faceline_color)],
         );
 
         Rendered2dShape::render_texture_trivial(
@@ -123,6 +124,7 @@ fn draw_faceline(st: &mut State, texture_view: &TextureView, encoder: &mut Comma
             st,
             texture_view,
             encoder,
+            Some("faceline".to_owned()),
         );
     }
 }
@@ -147,6 +149,7 @@ fn draw_glasses(st: &mut State, texture_view: &TextureView, encoder: &mut Comman
         st,
         texture_view,
         encoder,
+        Some("Glasses".to_owned()),
     );
 }
 
@@ -268,8 +271,9 @@ pub(crate) fn mesh_to_model(
         indices,
         color: match shape {
             Shape::HairNormal => vfl::color::nx::linear::COMMON_COLOR[color].into(),
-            Shape::FaceLine | Shape::ForeheadNormal | Shape::Nose => FACELINE_COLOR[color].into(),
-            Shape::Glasses => vec4(1.0, 0.0, 0.0, 0.0),
+            Shape::FaceLine | Shape::ForeheadNormal | Shape::Nose => {
+                vfl::color::nx::linear::FACELINE_COLOR[color].into()
+            }
             _ => vec4(0.0, 0.0, 0.0, 0.0),
         },
         texture: projected_texture,

@@ -80,7 +80,7 @@ pub mod nx {
 
     use super::Color;
 
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug)]
     pub enum ColorModulated {
         Eye,
         Eyebrow,
