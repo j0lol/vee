@@ -5,7 +5,6 @@ use winit::event_loop::{ControlFlow, EventLoop};
 pub mod app;
 pub mod char_draw;
 pub mod char_model;
-pub mod render;
 pub mod state;
 
 const DARK_REBECCA_PURPLE: wgpu::Color = wgpu::Color {

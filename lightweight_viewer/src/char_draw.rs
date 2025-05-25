@@ -1,9 +1,11 @@
-use crate::render::shape_data_to_render_3d_shape;
 use crate::state::State;
-use glam::{UVec2, Vec3, uvec2, vec3};
+use glam::{UVec2, Vec3, uvec2, vec3, vec4};
 use image::DynamicImage;
 use vfl::color::nx::ModulationIntent;
+use vfl::color::nx::linear::FACELINE_COLOR;
 use vfl::draw::render_3d::Rendered3dShape;
+use vfl::draw::wgpu_render::Vertex;
+use vfl::res::shape::nx::ShapeData;
 use vfl::res::tex::nx::{ResourceTexture, TextureElement};
 use vfl::{
     color::nx::{ColorModulated, modulate},
@@ -220,11 +222,49 @@ pub(crate) fn load_shape(
 
     let file_shape = &st.resources.shape_data[..];
 
-    Some(shape_data_to_render_3d_shape(
+    Some(mesh_to_model(
         shape_element.shape_data(file_shape).unwrap(),
         shape_kind,
         usize::from(shape_color),
         position,
         projected_texture,
     ))
+}
+
+// I'm in a fucking horror of my own design
+pub(crate) fn mesh_to_model(
+    d: ShapeData,
+    shape: Shape,
+    color: usize,
+    position: Vec3,
+    projected_texture: Option<texture::Texture>,
+) -> Rendered3dShape {
+    let mut vertices: Vec<Vertex> = vec![];
+    let tex_coords = d
+        .uvs
+        .unwrap_or(vec![[f32::NAN, f32::NAN]; d.positions.len()]); // Go on, return NULL. See if I care.
+    let normals = d.normals.unwrap();
+
+    for i in 0..d.positions.len() {
+        vertices.push(Vertex {
+            position: d.positions[i],
+            tex_coords: tex_coords[i],
+            normal: normals[i],
+        })
+    }
+
+    let indices = d.indices.iter().map(|x| u32::from(*x)).collect();
+
+    Rendered3dShape {
+        vertices,
+        indices,
+        color: match shape {
+            Shape::HairNormal => vfl::color::nx::linear::COMMON_COLOR[color].into(),
+            Shape::FaceLine | Shape::ForeheadNormal | Shape::Nose => FACELINE_COLOR[color].into(),
+            Shape::Glasses => vec4(1.0, 0.0, 0.0, 0.0),
+            _ => vec4(0.0, 0.0, 0.0, 0.0),
+        },
+        texture: projected_texture,
+        position,
+    }
 }
