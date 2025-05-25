@@ -1,16 +1,12 @@
-use vfl::{
-    draw::{faceline, render_3d::Rendered3dShape},
-    res::shape::nx::{Shape, ShapeData},
-};
+use crate::{char_draw::load_shape, state::State};
+use vfl::{draw::render_3d::Rendered3dShape, res::shape::nx::Shape};
 use wgpu::{CommandEncoder, TextureView};
 
-use crate::{State, char::load_shape};
-
-type Tex = wgpu::Texture;
-type TexOpt = Option<wgpu::Texture>;
+// I want to rename these things eventually...
 type Model = Rendered3dShape;
 type ModelOpt = Option<Rendered3dShape>;
 
+/// A bundle of models that in totality represent a character.
 #[derive(Debug)]
 pub struct CharModel {
     pub face_line: Model,
@@ -20,6 +16,7 @@ pub struct CharModel {
     pub glasses: ModelOpt,
     pub nose_line: Model,
 }
+
 impl CharModel {
     pub fn new(st: &mut State, encoder: &mut CommandEncoder) -> CharModel {
         CharModel {

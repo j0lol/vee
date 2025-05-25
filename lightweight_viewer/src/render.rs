@@ -1,5 +1,3 @@
-use crate::OVERLAY_REBECCA_PURPLE;
-use crate::wgpu_color_to_vec4;
 use glam::{Vec3, vec4};
 use vfl::draw::render_3d::Rendered3dShape;
 use vfl::draw::wgpu_render::texture;
