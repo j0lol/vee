@@ -9,6 +9,11 @@ vfl = { path = "../vfl", features = ["draw", "res"] }
 bytemuck = "1.23.0"
 glam = "0.30.3"
 image = "0.25.6"
-nalgebra = "0.33.2"
 pollster = "0.4.0"
 futures-intrusive = "0.5.0"
+
+[dev-dependencies]
+glam = { version = "0.30.3" , features = ["serde", "approx"]}
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+approx = "0.5.1"

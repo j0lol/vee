@@ -108,11 +108,15 @@ impl MaskFaceParts {
             origin: ImageOrigin::Right,
         };
 
+
+        let eb_base_scale_x = tex_scale2dim(info.eyebrow_scale.into());
+        let eb_base_scale_y = 0.12 * f32::from(info.eyebrow_aspect) + 0.64;
+
         let eb_spacing_x = TEX_EYEBROW_BASE_X + TEX_SCALE_X * f32::from(info.eyebrow_x);
         let eb_y =
             TEX_EYEBROW_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.eyebrow_y);
-        let eb_w = TEX_EYEBROW_BASE_W * tex_scale2dim(info.eyebrow_scale.into());
-        let eb_h = TEX_EYEBROW_BASE_H * tex_scale2dim(info.eyebrow_scale.into());
+        let eb_w = TEX_EYEBROW_BASE_W * eb_base_scale_x;
+        let eb_h = TEX_EYEBROW_BASE_H * eb_base_scale_x * eb_base_scale_y;
         let eb_a = tex_rotate2ang(
             (info.eyebrow_rotate + EYEBROW_ROT_OFFSET[info.eyebrow_type as usize]).into(),
         );
@@ -121,7 +125,7 @@ impl MaskFaceParts {
             y: eb_y * resolution,
             width: eb_w * resolution,
             height: eb_h * resolution,
-            angle_deg: 360.0 - eb_a,
+            angle_deg: 360.0 -  eb_a,
             origin: ImageOrigin::Left,
         };
         let eb_r = FacePart {

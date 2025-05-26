@@ -1,3 +1,4 @@
+use glam::{vec3, Mat4};
 use crate::color::nx::ModulationIntent;
 use image::DynamicImage;
 use mesh_building::trivial_quad;
@@ -34,11 +35,7 @@ impl DrawableTexture {
     pub fn model_2d(self) -> Model2d {
         let (vertices, indices) = trivial_quad();
 
-        let mvp_matrix = {
-            let scale = na::Vector3::<f32>::new(-2.0, -2.0, 1.0); // IDK
-
-            na::Matrix4::new_nonuniform_scaling(&scale)
-        };
+        let mvp_matrix = Mat4::from_scale(vec3(-2.0, -2.0, 1.0));
 
         Model2d {
             vertices,

@@ -1,5 +1,12 @@
-use glam::uvec2;
-use std::fs::File;
+use ffl_runner::FFlRunner;
+use glam::{uvec2, Mat4};
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::{self, File},
+    io::BufReader,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 use vee_wgpu::{ProgramState, headless::HeadlessRenderer, texture::TextureBundle};
 use vfl::{
     charinfo::nx::{BinRead, NxCharInfo},
@@ -9,6 +16,8 @@ use vfl::{
     },
 };
 use wgpu::CommandEncoder;
+
+pub mod ffl_runner;
 
 #[allow(unused)]
 pub struct Everything {
@@ -87,5 +96,60 @@ pub fn setup_renderer() -> Everything {
         texture_header,
         shape_data,
         texture_data,
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MaskTestData {
+    pub left_eye: Mat4,
+    pub right_eye: Mat4,
+    pub left_eyebrow: Mat4,
+    pub right_eyebrow: Mat4,
+    pub mouth: Mat4,
+    pub mole: Option<Mat4>,
+}
+
+pub fn get_mask_data() -> MaskTestData {
+    let file = PathBuf::from(format!(
+        "{}/test_data/inputs/jasmine_mask_mtx.json",
+        env!("CARGO_WORKSPACE_DIR"),
+    ));
+
+    if fs::exists(&file).unwrap() {
+        serde_json::from_reader(BufReader::new(File::open(file).unwrap())).unwrap()
+    } else {
+        let mut ffl = FFlRunner {
+            dir: PathBuf::from_str(dbg!(concat!(
+                env!("CARGO_WORKSPACE_DIR"),
+                "../FFL-Testing/"
+            )))
+            .unwrap(),
+        };
+
+        // This takes about two seconds.
+        ffl.run_ffl_testing().unwrap();
+
+        let matrices = [
+            "eye0mtx.txt",
+            "eye1mtx.txt",
+            "brow0mtx.txt",
+            "brow1mtx.txt",
+            "mouthmtx.txt",
+        ];
+        let [left_eye, right_eye, left_eyebrow, right_eyebrow, mouth] =
+            matrices.map(|file| ffl.get_resultant_mtx44(file).unwrap());
+
+        let data = MaskTestData {
+            left_eye,
+            right_eye,
+            left_eyebrow,
+            right_eyebrow,
+            mouth,
+            mole: None,
+        };
+
+        fs::write(file, serde_json::to_string_pretty(&data).unwrap()).unwrap();
+
+        data
     }
 }

@@ -1,6 +1,4 @@
-use super::TEX_SCALE_X;
-use super::TEX_SCALE_Y;
-use super::Vertex;
+use super::{Vertex, TEX_SCALE_X, TEX_SCALE_Y};
 use super::positioning::{FacePart, ImageOrigin, MaskFaceParts};
 use super::render_2d::Model2d;
 use crate::{
@@ -8,8 +6,7 @@ use crate::{
     color::nx::{ColorModulated, modulate},
     res::tex::nx::{ResourceTexture, TextureElement},
 };
-use glam::vec3;
-use nalgebra::Matrix4;
+use glam::{vec2, vec3, vec4, Mat2, Mat3, Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
 pub use bytemuck::cast_slice;
@@ -42,7 +39,7 @@ pub fn mask_texture_meshes(
         Model2d {
             vertices,
             indices,
-            tex: image::DynamicImage::ImageRgba8(tex),
+            tex: image::DynamicImage::ImageRgba8(tex).flipv(),
             mvp_matrix: mtx,
             modulation: modulate(modulated, char),
             opaque: None,
@@ -82,25 +79,23 @@ pub fn mask_texture_meshes(
 }
 
 pub fn model_view_matrix(
-    translation: mint::Vector3<f32>,
-    scale: mint::Vector3<f32>,
+    translation: Vec2,
+    scale: Vec2,
     rot_z: f32,
-) -> nalgebra::Matrix4<f32> {
-    let scale = nalgebra::Vector3::<f32>::from(scale);
-    let translation = nalgebra::Vector3::<f32>::from(translation);
-
-    let mut mtx = nalgebra::Matrix4::identity();
-    mtx.append_nonuniform_scaling_mut(&scale);
-    mtx *= nalgebra::Rotation3::from_euler_angles(0.0, 0.0, rot_z.to_radians()).to_homogeneous();
-    mtx.append_nonuniform_scaling_mut(&nalgebra::Vector3::new(TEX_SCALE_X, TEX_SCALE_Y, 1.0));
-    mtx.append_translation_mut(&translation);
-
-    mtx
+) -> Mat4 {
+    Mat4::from_scale_rotation_translation(
+        (scale * vec2(TEX_SCALE_X, TEX_SCALE_Y)).extend(1.0), 
+        Quat::from_rotation_z(-rot_z.to_radians()), 
+        translation.extend(0.0)
+    )
 }
 
 fn v2(x: f32, y: f32) -> [f32; 3] {
     [x, y, 0.0]
 }
+
+const OPENGL_TO_WEBGPU_Y_FLIP: Mat4 =
+    Mat4::from_cols(Vec4::X, Vec4::NEG_Y, Vec4::Z, Vec4::W);
 
 // https://github.com/SMGCommunity/Petari/blob/6e9ae741a99bb32e6ffbb230a88c976f539dde70/src/RVLFaceLib/RFL_MakeTex.c#L817
 /// # Panics
@@ -113,24 +108,33 @@ pub fn quad(
     rot_z: f32,
     origin: ImageOrigin,
     resolution: f32,
-) -> (Vec<Vertex>, Vec<u32>, nalgebra::Matrix4<f32>) {
+) -> (Vec<Vertex>, Vec<u32>, Mat4) {
     let base_x: f32;
     let s0: f32;
     let s1: f32;
 
     let mv_mtx = model_view_matrix(
-        vec3(x, resolution - y, 0.0).into(),
-        vec3(width, height, 1.0).into(),
+        vec2(x, resolution - y),
+        vec2(width, height ),
         rot_z,
     );
+    // let mv_mtx = mv_mtx.transpose();
 
-    let p_mtx = Matrix4::new_orthographic(0.0, resolution, 0.0, resolution, -200.0, 200.0);
+
+    let p_mtx = Mat4::orthographic_rh(0.0, resolution, 0.0, resolution, 200.0, -200.0);
+    // let p_mtx = p_mtx.transpose();
+    // let p_mtx = Matrix4::new_orthographic(0.0, resolution, 0.0, resolution, 200.0, -200.0);
     let mut mvp_mtx = p_mtx * mv_mtx;
 
-    *mvp_mtx
-        .get_mut((1, 1))
-        .expect("That index is never going to be out of bounds") *= -1.0;
+    //mvp_mtx.y_axis[1] *= -1.0;
 
+
+    // let mvp_mtx = Mat4 {
+    //     x_axis: vec4(0.33806923, 0.146022707, 0.0, 0.0),
+    //     y_axis: vec4(-0.169284195, 0.426169604, 0.00249999994, 0.0),
+    //     z_axis: vec4(0.0, 0.0, 0.5, 0.0),
+    //     w_axis: vec4(-0.166802764, -0.0792831778, 0.5, 1.0),
+    // };
     match origin {
         ImageOrigin::Center => {
             base_x = -0.5;

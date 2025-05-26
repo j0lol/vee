@@ -177,7 +177,7 @@ pub trait ProgramState {
                 label: Some("diffuse_bind_group"),
             });
 
-        let mvp_matrix = mesh.mvp_matrix.into();
+        let mvp_matrix = mesh.mvp_matrix.to_cols_array_2d();
         let mvp_uniform = TextureTransformUniform {
             mvp_matrix,
             channel_replacements_r: mesh.modulation.channels[0],
