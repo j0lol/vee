@@ -26,11 +26,8 @@ flate2 = { version = "1.1.1", features = ["rust_backend"], optional = true }
 glam = { version = "0.30.3", features = ["mint"], optional = true }
 mint = { version = "0.5.9", optional = true }
 nalgebra = { version = "0.33.2", features = ["mint"], optional = true }
-pollster = { version = "0.4.0", optional = true }
 tegra_swizzle = { version = "0.4.0", optional = true }
 texture2ddecoder = { version = "0.1.2", optional = true }
-# wgpu = { version = "25", optional = true }
-futures-intrusive = { version = "0.5.0", optional = true }
 
 # feat: gltf
 mesh-tools = { version = "0.1.0", optional = true }
@@ -40,14 +37,5 @@ image-compare = "0.4.1"
 
 [features]
 res = ["dep:image", "dep:tegra_swizzle", "dep:flate2"]
-draw = [
-    "res",
-    # "dep:wgpu",
-    "dep:futures-intrusive",
-    "dep:texture2ddecoder",
-    "dep:pollster",
-    "dep:glam",
-    "dep:mint",
-    "dep:nalgebra",
-]
+draw = ["res", "dep:texture2ddecoder", "dep:glam", "dep:mint", "dep:nalgebra"]
 gltf = ["res", "dep:mesh-tools"]

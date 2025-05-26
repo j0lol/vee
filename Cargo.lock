@@ -2577,7 +2577,6 @@ dependencies = [
  "binrw",
  "bytemuck",
  "flate2",
- "futures-intrusive",
  "glam",
  "half",
  "image 0.25.6",
@@ -2587,7 +2586,6 @@ dependencies = [
  "mint",
  "nalgebra 0.33.2",
  "num_enum",
- "pollster",
  "tegra_swizzle",
  "texture2ddecoder",
 ]

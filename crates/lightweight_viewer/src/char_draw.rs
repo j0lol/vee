@@ -4,13 +4,13 @@ use image::DynamicImage;
 use vee_wgpu::texture::TextureBundle;
 use vee_wgpu::{Model3d, ProgramState};
 use vfl::color::nx::ModulationIntent;
+use vfl::draw::mesh_building::mask_texture_meshes;
 use vfl::draw::render_3d::GenericModel3d;
 use vfl::draw::{DrawableTexture, Vertex};
 use vfl::res::shape::nx::ShapeData;
 use vfl::res::tex::nx::{ResourceTexture, TextureElement};
 use vfl::{
     color::nx::{ColorModulated, modulate},
-    draw::wgpu_render::RenderContext,
     res::shape::nx::{GenericResourceShape, Shape},
 };
 use wgpu::{CommandEncoder, TextureView};
@@ -46,9 +46,9 @@ pub(crate) fn draw_mask(st: &mut State, texture_view: &TextureView, encoder: &mu
     let res_texture = &st.resources.texture_header;
     let file_texture = &st.resources.texture_data;
 
-    let render_context = RenderContext::new(&st.char_info.clone(), res_texture, file_texture);
+    let shapes = mask_texture_meshes(&st.char_info, res_texture, file_texture);
 
-    for mut shape in render_context.shape {
+    for mut shape in shapes {
         st.draw_model_2d(&mut shape, texture_view, encoder);
     }
 }

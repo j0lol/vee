@@ -5,7 +5,6 @@ use nalgebra::Matrix4;
 
 type Color = [f32; 4];
 
-const NON_REPLACEMENT: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
 #[derive(Debug)]
 pub struct Model2d {
     pub vertices: Vec<Vertex>,

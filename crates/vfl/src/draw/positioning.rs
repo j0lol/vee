@@ -80,34 +80,6 @@ pub struct MaskFaceParts {
 }
 
 impl MaskFaceParts {
-    pub fn init_glasses(info: &NxCharInfo, resolution: f32) -> [FacePart; 2] {
-        let resolution = resolution / 64.0;
-
-        let glass_y = TEX_EYE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.glass_y);
-        let glass_w = TEX_EYE_BASE_W * tex_scale2dim(info.glass_scale.into());
-        let glass_h = TEX_EYE_BASE_H * tex_scale2dim(info.glass_scale.into());
-        // let eye_a =
-        //     tex_rotate2ang((info + EYE_ROT_OFFSET[info.glass_type as usize]).into());
-
-        let eye_l = FacePart {
-            x: resolution * (32.0),
-            y: glass_y * resolution,
-            width: glass_w * resolution,
-            height: glass_h * resolution,
-            angle_deg: 360.0 - 0.0,
-            origin: ImageOrigin::Left,
-        };
-        let eye_r = FacePart {
-            x: resolution * (32.0),
-            y: glass_y * resolution,
-            width: glass_w * resolution,
-            height: glass_h * resolution,
-            angle_deg: 0.0,
-            origin: ImageOrigin::Right,
-        };
-
-        [eye_l, eye_r]
-    }
     pub fn init(info: &NxCharInfo, resolution: f32) -> MaskFaceParts {
         // RFLi_TEX_UNIT
         let resolution = resolution / 64.0;
