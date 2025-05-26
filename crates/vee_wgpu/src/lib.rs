@@ -4,7 +4,7 @@ use vfl::draw::Vertex;
 use wgpu::{BlendState, CommandEncoder, TextureView};
 use wgpu::{PipelineCompilationOptions, TexelCopyTextureInfo, include_wgsl, util::DeviceExt};
 
-mod headless;
+pub mod headless;
 
 pub type Model3d = vfl::draw::render_3d::GenericModel3d<TextureBundle>;
 
@@ -660,6 +660,53 @@ pub mod texture {
             }
         }
 
+        /// Outputs a linear color texture instead of an srgb color texture. Should replace.
+        pub fn create_texture_linear_color(
+            device: &wgpu::Device,
+            size: &UVec2,
+            label: &str,
+        ) -> Self {
+            let size = wgpu::Extent3d {
+                // 2.
+                width: size.x.max(1),
+                height: size.y.max(1),
+                depth_or_array_layers: 1,
+            };
+            let desc = wgpu::TextureDescriptor {
+                label: Some(label),
+                size,
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: TextureFormat::Bgra8Unorm,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
+                       | wgpu::TextureUsages::TEXTURE_BINDING
+                       | wgpu::TextureUsages::COPY_SRC,
+                view_formats: &[TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
+            };
+            let texture = device.create_texture(&desc);
+
+            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+                // 4.
+                address_mode_u: wgpu::AddressMode::MirrorRepeat,
+                address_mode_v: wgpu::AddressMode::MirrorRepeat,
+                address_mode_w: wgpu::AddressMode::MirrorRepeat,
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::FilterMode::Nearest,
+                lod_min_clamp: 0.0,
+                lod_max_clamp: 100.0,
+                ..Default::default()
+            });
+
+            Self {
+                texture,
+                view,
+                sampler,
+            }
+        }
+
         pub fn create_texture(device: &wgpu::Device, size: &UVec2, label: &str) -> Self {
             let size = wgpu::Extent3d {
                 // 2.
@@ -677,7 +724,7 @@ pub mod texture {
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
                        | wgpu::TextureUsages::TEXTURE_BINDING
                        | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[],
+                view_formats: &[TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
             };
             let texture = device.create_texture(&desc);
 

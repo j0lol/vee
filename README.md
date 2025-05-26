@@ -1,4 +1,5 @@
 # VFL — Vee Face Library
+[![Coverage Status](https://coveralls.io/repos/github/j0lol/vee/badge.svg?branch=main)](https://coveralls.io/github/j0lol/vee?branch=main)
 
 Research library for replicating Mii functionality from decompilations in a more modern language & runtime. Ideally, this library will replicate functionality accurately from these targets:
 - Cafe (WUP)
