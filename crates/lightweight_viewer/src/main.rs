@@ -1,5 +1,5 @@
 use app::App;
-use glam::{Vec4, vec4};
+use glam::{vec4, Vec4};
 use winit::event_loop::{ControlFlow, EventLoop};
 
 pub mod app;

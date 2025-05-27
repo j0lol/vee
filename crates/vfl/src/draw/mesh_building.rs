@@ -6,7 +6,7 @@ use crate::{
     color::nx::{modulate, ColorModulated},
     res::tex::nx::{ResourceTexture, TextureElement},
 };
-use glam::{vec2, Mat4, Quat, Vec2, Vec3Swizzles, Vec4};
+use glam::{vec2, Mat4, Quat, Vec2, Vec4};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
 pub use bytemuck::cast_slice;

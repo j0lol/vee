@@ -1,19 +1,19 @@
 use crate::camera::{Camera, CameraUniform};
 use crate::char_model::CharModel;
 use crate::{DARK_REBECCA_PURPLE, FACES};
-use glam::{UVec2, Vec3, uvec2};
+use glam::{uvec2, UVec2, Vec3};
 use nest_struct::nest_struct;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
-use vee_wgpu::ProgramState;
 use vee_wgpu::texture::TextureBundle;
+use vee_wgpu::ProgramState;
 use vfl::res::shape::nx::ResourceShape;
 use vfl::res::tex::nx::ResourceTexture;
 use vfl::{
     charinfo::nx::{BinRead, NxCharInfo},
     res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
 };
-use wgpu::{Backends, util::DeviceExt};
+use wgpu::{util::DeviceExt, Backends};
 use winit::window::Window;
 
 // Yeah, yeah.
@@ -28,7 +28,7 @@ use winit::window::Window;
 //    It's like a constant pointer to a location in memory.
 //
 // - Why isn't this in State?
-//    It needs to be global (so we can reference it in rendering), 
+//    It needs to be global (so we can reference it in rendering),
 //    but it needs to take a &mut reference to State to be initialized.
 //    The compiler basically complained at me too much.
 static CHAR_MODEL: OnceLock<Mutex<CharModel>> = OnceLock::new();
