@@ -203,7 +203,7 @@ impl TextureElement {
             Err(e) => return Err(e),
         };
 
-        let img: ImageBuffer<Rgba<u8>, Vec<u8>> = image::RgbaImage::from_raw(
+        let img: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::from_raw(
             self.texture.width.into(),
             self.texture.height.into(),
             bytes,

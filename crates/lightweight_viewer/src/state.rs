@@ -23,13 +23,13 @@ use winit::window::Window;
 //    A Mutex allows multiple references to a value that can be mutated.
 //    This is normally not allowed in Rust (see &mut rules.)
 //    A OnceLock is basically a wrapper for a maybe uninitialised value.
-//    We use it to initialise the model "later" (once we can render.)
-//    It's in a static so we can use it anywhere.
+//    We use it to initialize the model "later" (once we can render.)
+//    It's in a `static` so we can use it anywhere.
 //    It's like a constant pointer to a location in memory.
 //
 // - Why isn't this in State?
-//    It needs to be global (so we can reference it in rendering)
-//    but it needs to take a &mut reference to State to be initialised.
+//    It needs to be global (so we can reference it in rendering), 
+//    but it needs to take a &mut reference to State to be initialized.
 //    The compiler basically complained at me too much.
 static CHAR_MODEL: OnceLock<Mutex<CharModel>> = OnceLock::new();
 
@@ -39,10 +39,10 @@ pub fn char_model() -> MutexGuard<'static, CharModel> {
 }
 
 // Wgpu requires a LOT of state for rendering. It's kind of annoying.
-// We put our own stuff in here too (camera, resource data, etc)
+// We put our own stuff in here too (camera, resource data, etc.)
 // Nested struct definitions requires a macro...
 // See: https://github.com/rust-lang/rfcs/pull/2584
-// There's a few macros that implement this, I might swap it later
+// There are a few macros that implement this, I might swap it later
 // See: {nest_struct, structstruck, nestify}
 #[nest_struct]
 pub struct State {
@@ -70,7 +70,7 @@ pub struct State {
 }
 
 impl State {
-    // All of our GPU setup code. Async because winit is annoying.
+    // All of our GPU setup code. Async because `winit` is annoying.
     pub async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::PRIMARY | Backends::SECONDARY,
@@ -261,7 +261,7 @@ impl State {
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: self.surface_format,
-            // Request compatibility with the sRGB-format texture view we‘re going to create later.
+            // Request compatibility with the sRGB-format texture view we're going to create later.
             view_formats: vec![self.surface_format.add_srgb_suffix()],
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             width: self.size.x,
@@ -289,7 +289,7 @@ impl State {
 
         let right = forward_norm.cross(self.camera.up);
 
-        const CAMERA_ROTATE_SPEED: f32 = 0.5;
+        const CAMERA_ROTATE_SPEED: f32 = 2.0;
         self.camera.eye =
             self.camera.target - (forward + right * CAMERA_ROTATE_SPEED).normalize() * forward_mag;
 

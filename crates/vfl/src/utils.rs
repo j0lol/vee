@@ -26,8 +26,8 @@ impl Vec3PackedSnorm {
 }
 
 /// Abstraction over anything that can be read as Seek or Read
-pub trait ReadSeek: std::io::Seek + std::io::Read {}
-impl<T: ?Sized> ReadSeek for T where T: std::io::Seek + std::io::Read {}
+pub trait ReadSeek: io::Seek + Read {}
+impl<T: ?Sized> ReadSeek for T where T: io::Seek + Read {}
 
 pub(crate) fn read_byte_slice(
     file: &mut dyn ReadSeek, // Dynamic param: Anything that impl's Read + Seek

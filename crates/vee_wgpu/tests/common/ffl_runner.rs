@@ -1,10 +1,10 @@
+use glam::Mat4;
 use std::{
-    error::Error,
-    io::read_to_string,
+    error::Error
+    ,
     path::PathBuf,
     process::{Command, Output},
 };
-use glam::Mat4;
 
 pub struct FFlRunner {
     pub dir: PathBuf,

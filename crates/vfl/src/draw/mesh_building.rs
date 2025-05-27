@@ -1,12 +1,12 @@
-use super::{Vertex, TEX_SCALE_X, TEX_SCALE_Y};
 use super::positioning::{FacePart, ImageOrigin, MaskFaceParts};
 use super::render_2d::Model2d;
+use super::{Vertex, TEX_SCALE_X, TEX_SCALE_Y};
 use crate::{
     charinfo::nx::NxCharInfo,
-    color::nx::{ColorModulated, modulate},
+    color::nx::{modulate, ColorModulated},
     res::tex::nx::{ResourceTexture, TextureElement},
 };
-use glam::{vec2, vec3, vec4, Mat2, Mat3, Mat4, Quat, Vec2, Vec3, Vec3Swizzles, Vec4};
+use glam::{vec2, Mat4, Quat, Vec2, Vec3Swizzles, Vec4};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
 pub use bytemuck::cast_slice;
@@ -97,7 +97,7 @@ fn v2(x: f32, y: f32) -> [f32; 3] {
 const OPENGL_TO_WEBGPU_Y_FLIP: Mat4 =
     Mat4::from_cols(Vec4::X, Vec4::NEG_Y, Vec4::Z, Vec4::W);
 
-// https://github.com/SMGCommunity/Petari/blob/6e9ae741a99bb32e6ffbb230a88c976f539dde70/src/RVLFaceLib/RFL_MakeTex.c#L817
+// RFL_MakeTex.c :817
 /// # Panics
 /// Shouldn't panic!
 pub fn quad(
@@ -124,7 +124,7 @@ pub fn quad(
     let p_mtx = Mat4::orthographic_rh(0.0, resolution, 0.0, resolution, 200.0, -200.0);
     // let p_mtx = p_mtx.transpose();
     // let p_mtx = Matrix4::new_orthographic(0.0, resolution, 0.0, resolution, 200.0, -200.0);
-    let mut mvp_mtx = p_mtx * mv_mtx;
+    let mvp_mtx = p_mtx * mv_mtx;
 
     //mvp_mtx.y_axis[1] *= -1.0;
 

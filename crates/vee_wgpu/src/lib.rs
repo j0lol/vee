@@ -28,9 +28,8 @@ impl UniformBuffer for Vertex {
         wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x3];
 
     fn desc() -> wgpu::VertexBufferLayout<'static> {
-        use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &Self::ATTRIBS,
         }
@@ -183,7 +182,7 @@ pub trait ProgramState {
             channel_replacements_r: mesh.modulation.channels[0],
             channel_replacements_g: mesh.modulation.channels[1],
             channel_replacements_b: mesh.modulation.channels[2],
-            texture_type: (Into::<u8>::into(mesh.modulation.mode)).into(),
+            texture_type: Into::<u8>::into(mesh.modulation.mode).into(),
             pad: Default::default(),
         };
 
@@ -246,7 +245,7 @@ pub trait ProgramState {
                         entry_point: Some("fs_main"),
                         targets: &[Some(wgpu::ColorTargetState {
                             format: self.surface_fmt(),
-                            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                            blend: Some(BlendState::ALPHA_BLENDING),
                             write_mask: wgpu::ColorWrites::ALL,
                         })],
                         compilation_options: PipelineCompilationOptions::default(),
@@ -256,11 +255,8 @@ pub trait ProgramState {
                         strip_index_format: None,
                         front_face: wgpu::FrontFace::Ccw,
                         cull_mode: None,
-                        // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                         polygon_mode: wgpu::PolygonMode::Fill,
-                        // Requires Features::DEPTH_CLIP_CONTROL
                         unclipped_depth: false,
-                        // Requires Features::CONSERVATIVE_RASTERIZATION
                         conservative: false,
                     },
                     depth_stencil: None,
@@ -463,11 +459,8 @@ pub trait ProgramState {
                         strip_index_format: None,
                         front_face: wgpu::FrontFace::Ccw,
                         cull_mode: None, // TODO toggle
-                        // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
                         polygon_mode: wgpu::PolygonMode::Fill,
-                        // Requires Features::DEPTH_CLIP_CONTROL
                         unclipped_depth: false,
-                        // Requires Features::CONSERVATIVE_RASTERIZATION
                         conservative: false,
                     },
                     depth_stencil: Some(wgpu::DepthStencilState {
@@ -577,7 +570,7 @@ pub mod texture {
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                format: TextureFormat::Rgba8UnormSrgb,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 view_formats: &[],
             });
@@ -616,7 +609,7 @@ pub mod texture {
             })
         }
 
-        pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float; // 1.
+        pub const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float; // 1.
 
         pub fn create_depth_texture(device: &wgpu::Device, size: &UVec2, label: &str) -> Self {
             let size = wgpu::Extent3d {

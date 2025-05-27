@@ -78,7 +78,7 @@ impl BinRead for ShapeData {
 
     fn read_options<R: Read + Seek>(
         reader: &mut R,
-        endian: binrw::Endian,
+        endian: Endian,
         args: Self::Args<'_>,
     ) -> binrw::BinResult<Self> {
         const PER_VERTEX_SIZE: u32 = 8;

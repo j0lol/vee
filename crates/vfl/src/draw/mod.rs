@@ -1,8 +1,7 @@
-use glam::{vec3, Mat4};
 use crate::color::nx::ModulationIntent;
+use glam::{vec3, Mat4};
 use image::DynamicImage;
 use mesh_building::trivial_quad;
-use nalgebra as na;
 use render_2d::Model2d;
 
 #[cfg(feature = "draw")]

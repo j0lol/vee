@@ -81,7 +81,8 @@ pub fn setup_mask(
 
     let image_handle = images.add(image);
 
-    // This specifies the layer used for the first pass, which will be attached to the first pass camera and cube.
+    // This specifies the layer used for the first pass,
+    // which will be attached to the first pass camera and cube.
     let first_pass_layer = RenderLayers::layer(1);
 
     draw_char_mask(&mut images, &mut commands, first_pass_layer.clone());
@@ -196,7 +197,8 @@ pub fn setup_glasses(
 
     let image_handle = images.add(image);
 
-    // This specifies the layer used for the first pass, which will be attached to the first pass camera and cube.
+    // This specifies the layer used for the first pass,
+    // which will be attached to the first pass camera and cube.
     let first_pass_layer = RenderLayers::layer(2);
 
     let mut glasses_shape_transform =

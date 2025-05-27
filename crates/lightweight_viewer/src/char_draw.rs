@@ -198,8 +198,10 @@ pub(crate) fn load_shape(
     };
 
     let scale = match shape_kind {
-        Shape::Glasses => Vec3::splat(0.15 * f32::from(st.char_info.glass_scale) + 0.4), // RFL_Model.c :784
-        Shape::Nose => Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4), // RFL_Model.c :705
+        // RFL_Model.c :784
+        Shape::Glasses => Vec3::splat(0.15 * f32::from(st.char_info.glass_scale) + 0.4),
+        // RFL_Model.c :705
+        Shape::Nose => Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4),
         _ => Vec3::ONE,
     };
 
@@ -248,8 +250,8 @@ pub(crate) fn mesh_to_model(
 ) -> Model3d {
     let mut vertices: Vec<Vertex> = vec![];
     let tex_coords = d
-        .uvs
-        .unwrap_or(vec![[f32::NAN, f32::NAN]; d.positions.len()]); // Go on, return NULL. See if I care.
+        .uvs// Go on, return NULL. See if I care.
+        .unwrap_or(vec![[f32::NAN, f32::NAN]; d.positions.len()]); 
     let normals = d.normals.unwrap();
 
     for i in 0..d.positions.len() {

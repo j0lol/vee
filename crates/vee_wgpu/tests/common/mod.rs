@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
     io::BufReader,
-    path::{Path, PathBuf},
+    path::PathBuf,
     str::FromStr,
 };
-use vee_wgpu::{ProgramState, headless::HeadlessRenderer, texture::TextureBundle};
+use vee_wgpu::{headless::HeadlessRenderer, texture::TextureBundle, ProgramState};
 use vfl::{
     charinfo::nx::{BinRead, NxCharInfo},
     res::{
@@ -50,8 +50,8 @@ pub fn setup_renderer_linear_color() -> Everything {
     let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
     let texture_header =
         ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-    let shape_data = std::fs::read(SHAPE_MID_DAT).unwrap();
-    let texture_data = std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
+    let shape_data = fs::read(SHAPE_MID_DAT).unwrap();
+    let texture_data = fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
 
     Everything {
         render: renderer,
@@ -84,8 +84,8 @@ pub fn setup_renderer() -> Everything {
     let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
     let texture_header =
         ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-    let shape_data = std::fs::read(SHAPE_MID_DAT).unwrap();
-    let texture_data = std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
+    let shape_data = fs::read(SHAPE_MID_DAT).unwrap();
+    let texture_data = fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
 
     Everything {
         render: renderer,

@@ -136,7 +136,7 @@ impl HeadlessRenderer {
         mut encoder: CommandEncoder,
     ) -> DynamicImage {
         pollster::block_on(async {
-            let u32_size = std::mem::size_of::<u32>() as u32;
+            let u32_size = size_of::<u32>() as u32;
             let output_buffer_size = wgpu::BufferAddress::from(
                 u32_size * texture.texture.size().width * texture.texture.size().height,
             );

@@ -872,18 +872,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "image-compare"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96cd73af13ae2e7220a1c02fe7d6bb53be50612ba7fabbb5c88e7753645f1f3c"
-dependencies = [
- "image 0.25.6",
- "itertools 0.12.1",
- "rayon",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "image-webp"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -925,15 +913,6 @@ name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -1068,7 +1047,6 @@ dependencies = [
  "bytemuck",
  "glam",
  "image 0.25.6",
- "nalgebra 0.33.2",
  "nest_struct",
  "pollster",
  "vee_wgpu",
@@ -1160,9 +1138,9 @@ dependencies = [
 
 [[package]]
 name = "mesh-tools"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b07c5e96a6080555d650321a81c7e3cd68b08261f63ee5db2b069a50f5ce7db"
+checksum = "aeb7294a51d6df1c2715f6fc9915831baeee79801c7e81aa2e98611c0e6b080b"
 dependencies = [
  "base64",
  "byteorder",
@@ -1944,7 +1922,7 @@ dependencies = [
  "built",
  "cfg-if",
  "interpolate_name",
- "itertools 0.12.1",
+ "itertools",
  "libc",
  "libfuzzer-sys",
  "log",
@@ -2584,8 +2562,6 @@ dependencies = [
  "glam",
  "half",
  "image 0.25.6",
- "image-compare",
- "itertools 0.14.0",
  "mesh-tools",
  "mint",
  "nalgebra 0.33.2",
