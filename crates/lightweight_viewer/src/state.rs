@@ -289,7 +289,7 @@ impl State {
 
         let right = forward_norm.cross(self.camera.up);
 
-        const CAMERA_ROTATE_SPEED: f32 = 2.0;
+        const CAMERA_ROTATE_SPEED: f32 = 0.0;
         self.camera.eye =
             self.camera.target - (forward + right * CAMERA_ROTATE_SPEED).normalize() * forward_mag;
 
