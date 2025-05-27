@@ -83,7 +83,7 @@ fn modulate_direct_texture(color: vec4f) -> vec4f {
 fn modulate_alpha(color: vec4f) -> vec4f {
     let repl = mvp.color_r;
 
-    return vec4(repl.rgb, repl.a * color.r);
+    return vec4(repl.rgb, color.r);
 }
 
 // Texture passes luminance + alpha, we colorize it.
@@ -91,7 +91,7 @@ fn modulate_alpha(color: vec4f) -> vec4f {
 fn modulate_lum_alpha(color: vec4f) -> vec4f {
     let repl_lum = mvp.color_r;
 
-    return vec4(color.r * repl_lum.rgb, repl_lum.a * color.g);
+    return vec4f(color.r * repl_lum.rgb, repl_lum.a * color.g);
 }
 
 

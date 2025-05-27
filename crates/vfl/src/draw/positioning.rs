@@ -82,70 +82,75 @@ pub struct MaskFaceParts {
 impl MaskFaceParts {
     pub fn init(info: &NxCharInfo, resolution: f32) -> MaskFaceParts {
         // RFLi_TEX_UNIT
-        let resolution = resolution / 64.0;
-
+        let base_scale = tex_unit(resolution);
+        
+        let eye_base_scale = tex_scale2dim(info.eye_scale.into());
+        let eye_base_scale_y = 0.12 * f32::from(info.eye_aspect) + 0.64;
+        
         let eye_spacing_x = TEX_EYE_BASE_X + TEX_SCALE_X * f32::from(info.eye_x);
         let eye_y = TEX_EYE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.eye_y);
-        let eye_w = TEX_EYE_BASE_W * tex_scale2dim(info.eye_scale.into());
-        let eye_h = TEX_EYE_BASE_H * tex_scale2dim(info.eye_scale.into());
+        let eye_w = TEX_EYE_BASE_W * eye_base_scale;
+        let eye_h = TEX_EYE_BASE_H * eye_base_scale * eye_base_scale_y;
         let eye_a =
             tex_rotate2ang((info.eye_rotate + EYE_ROT_OFFSET[info.eye_type as usize]).into());
 
         let eye_l = FacePart {
-            x: resolution * (32.0 + eye_spacing_x),
-            y: eye_y * resolution,
-            width: eye_w * resolution,
-            height: eye_h * resolution,
+            x: base_scale * (32.0 + eye_spacing_x),
+            y: eye_y * base_scale,
+            width: eye_w * base_scale,
+            height: eye_h * base_scale,
             angle_deg: 360.0 - eye_a,
             origin: ImageOrigin::Left,
         };
         let eye_r = FacePart {
-            x: resolution * (32.0 - eye_spacing_x),
-            y: eye_y * resolution,
-            width: eye_w * resolution,
-            height: eye_h * resolution,
+            x: base_scale * (32.0 - eye_spacing_x),
+            y: eye_y * base_scale,
+            width: eye_w * base_scale,
+            height: eye_h * base_scale,
             angle_deg: eye_a,
             origin: ImageOrigin::Right,
         };
 
 
-        let eb_base_scale_x = tex_scale2dim(info.eyebrow_scale.into());
+        let eb_base_scale = tex_scale2dim(info.eyebrow_scale.into());
         let eb_base_scale_y = 0.12 * f32::from(info.eyebrow_aspect) + 0.64;
 
         let eb_spacing_x = TEX_EYEBROW_BASE_X + TEX_SCALE_X * f32::from(info.eyebrow_x);
         let eb_y =
             TEX_EYEBROW_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.eyebrow_y);
-        let eb_w = TEX_EYEBROW_BASE_W * eb_base_scale_x;
-        let eb_h = TEX_EYEBROW_BASE_H * eb_base_scale_x * eb_base_scale_y;
+        let eb_w = TEX_EYEBROW_BASE_W * eb_base_scale;
+        let eb_h = TEX_EYEBROW_BASE_H * eb_base_scale * eb_base_scale_y;
         let eb_a = tex_rotate2ang(
             (info.eyebrow_rotate + EYEBROW_ROT_OFFSET[info.eyebrow_type as usize]).into(),
         );
         let eb_l = FacePart {
-            x: resolution * (32.0 + eb_spacing_x),
-            y: eb_y * resolution,
-            width: eb_w * resolution,
-            height: eb_h * resolution,
+            x: base_scale * (32.0 + eb_spacing_x),
+            y: eb_y * base_scale,
+            width: eb_w * base_scale,
+            height: eb_h * base_scale,
             angle_deg: 360.0 -  eb_a,
             origin: ImageOrigin::Left,
         };
         let eb_r = FacePart {
-            x: resolution * (32.0 - eb_spacing_x),
-            y: eb_y * resolution,
-            width: eb_w * resolution,
-            height: eb_h * resolution,
+            x: base_scale * (32.0 - eb_spacing_x),
+            y: eb_y * base_scale,
+            width: eb_w * base_scale,
+            height: eb_h * base_scale,
             angle_deg: eb_a,
             origin: ImageOrigin::Right,
         };
 
+        let mouth_base_scale = tex_scale2dim(info.mouth_scale.into());
+        let mouth_base_scale_y = 0.12 * f32::from(info.mouth_aspect) + 0.64;
         let mouth_y = TEX_MOUTH_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.mouth_y);
-        let mouth_w = TEX_MOUTH_BASE_W * tex_scale2dim(info.mouth_scale.into());
-        let mouth_h = TEX_MOUTH_BASE_H * tex_scale2dim(info.mouth_scale.into());
+        let mouth_w = TEX_MOUTH_BASE_W * mouth_base_scale;
+        let mouth_h = TEX_MOUTH_BASE_H * mouth_base_scale * mouth_base_scale_y;
 
         let mouth = FacePart {
-            x: resolution * 32.0,
-            y: mouth_y * resolution,
-            width: mouth_w * resolution,
-            height: mouth_h * resolution,
+            x: base_scale * 32.0,
+            y: mouth_y * base_scale,
+            width: mouth_w * base_scale,
+            height: mouth_h * base_scale,
             angle_deg: 0.0,
             origin: ImageOrigin::Center,
         };
@@ -156,18 +161,18 @@ impl MaskFaceParts {
         let mus_h = TEX_MUSTACHE_BASE_H * tex_scale2dim(info.mustache_scale.into());
 
         let mus_l = FacePart {
-            x: resolution * 32.0,
-            y: mus_y * resolution,
-            width: mus_w * resolution,
-            height: mus_h * resolution,
+            x: base_scale * 32.0,
+            y: mus_y * base_scale,
+            width: mus_w * base_scale,
+            height: mus_h * base_scale,
             angle_deg: 0.0,
             origin: ImageOrigin::Left,
         };
         let mus_r = FacePart {
-            x: resolution * 32.0,
-            y: mus_y * resolution,
-            width: mus_w * resolution,
-            height: mus_h * resolution,
+            x: base_scale * 32.0,
+            y: mus_y * base_scale,
+            width: mus_w * base_scale,
+            height: mus_h * base_scale,
             angle_deg: 0.0,
             origin: ImageOrigin::Right,
         };
@@ -178,10 +183,10 @@ impl MaskFaceParts {
         let mole_h = TEX_MOLE_BASE_H * tex_scale2dim(info.mole_scale.into());
 
         let mole = FacePart {
-            x: mole_x * resolution,
-            y: mole_y * resolution,
-            width: mole_w * resolution,
-            height: mole_h * resolution,
+            x: mole_x * base_scale,
+            y: mole_y * base_scale,
+            width: mole_w * base_scale,
+            height: mole_h * base_scale,
             angle_deg: 0.0,
             origin: ImageOrigin::Center,
         };

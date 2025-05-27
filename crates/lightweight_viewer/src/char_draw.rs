@@ -1,5 +1,5 @@
 use crate::state::State;
-use glam::{UVec2, Vec3, uvec2, vec3, vec4};
+use glam::{uvec2, vec3, vec4, UVec2, Vec3};
 use image::DynamicImage;
 use vee_wgpu::texture::TextureBundle;
 use vee_wgpu::{Model3d, ProgramState};
@@ -10,7 +10,7 @@ use vfl::draw::{DrawableTexture, Vertex};
 use vfl::res::shape::nx::ShapeData;
 use vfl::res::tex::nx::{ResourceTexture, TextureElement};
 use vfl::{
-    color::nx::{ColorModulated, modulate},
+    color::nx::{modulate, ColorModulated},
     res::shape::nx::{GenericResourceShape, Shape},
 };
 use wgpu::{CommandEncoder, TextureView};
@@ -77,20 +77,35 @@ fn get_faceline_textures(
     res_texture: &ResourceTexture,
 ) -> Vec<(DynamicImage, ModulationIntent)> {
     vec![
-        load_faceline_texture(
-            st,
-            res_texture.wrinkle[st.char_info.faceline_wrinkle as usize],
-            ColorModulated::FacelineWrinkle,
-        ),
-        load_faceline_texture(
-            st,
-            res_texture.makeup[st.char_info.faceline_make as usize],
-            ColorModulated::FacelineMakeup,
-        ),
         {
-            // We need to do a "smarter" check here.
+            if st.char_info.faceline_wrinkle != 0 {
+                load_faceline_texture(
+                    st,
+                    res_texture.wrinkle[st.char_info.faceline_wrinkle as usize],
+                    ColorModulated::FacelineWrinkle,
+                )
+            } else {
+                None
+            }
+        },
+        {
+            if st.char_info.faceline_make != 0 {
+                load_faceline_texture(
+                    st,
+                    res_texture.makeup[st.char_info.faceline_make as usize],
+                    ColorModulated::FacelineMakeup,
+                )
+            } else {
+                None
+            }
+        },
+        {
             if st.char_info.beard_type >= 4 {
-                load_faceline_texture(st, res_texture.beard[1], ColorModulated::BeardTexture)
+                load_faceline_texture(
+                    st,
+                    res_texture.beard[usize::from(st.char_info.beard_type - 3)],
+                    ColorModulated::FacelineBeard,
+                )
             } else {
                 None
             }
@@ -201,7 +216,9 @@ pub(crate) fn load_shape(
         // RFL_Model.c :784
         Shape::Glasses => Vec3::splat(0.15 * f32::from(st.char_info.glass_scale) + 0.4),
         // RFL_Model.c :705
-        Shape::Nose => Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4),
+        Shape::Nose | Shape::NoseLine => {
+            Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4)
+        }
         _ => Vec3::ONE,
     };
 
@@ -250,8 +267,8 @@ pub(crate) fn mesh_to_model(
 ) -> Model3d {
     let mut vertices: Vec<Vertex> = vec![];
     let tex_coords = d
-        .uvs// Go on, return NULL. See if I care.
-        .unwrap_or(vec![[f32::NAN, f32::NAN]; d.positions.len()]); 
+        .uvs // Go on, return NULL. See if I care.
+        .unwrap_or(vec![[f32::NAN, f32::NAN]; d.positions.len()]);
     let normals = d.normals.unwrap();
 
     for i in 0..d.positions.len() {

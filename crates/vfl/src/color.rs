@@ -86,7 +86,7 @@ pub mod nx {
         Eyebrow,
         Mouth,
         Glass,
-        BeardTexture,
+        FacelineBeard,
         NoseLineShape,
         FacelineMakeup,
         FacelineWrinkle,
@@ -154,7 +154,11 @@ pub mod nx {
                     NON_MODULATION,
                 ],
             },
-            ColorModulated::BeardTexture => ModulationIntent {
+            ColorModulated::NoseLineShape => ModulationIntent {
+                mode: M::AlphaTexture,
+                channels: [BLACK, NON_MODULATION, NON_MODULATION],
+            },
+            ColorModulated::FacelineBeard => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
                     linear::COMMON_COLOR[usize::from(char.beard_color)],
@@ -162,13 +166,15 @@ pub mod nx {
                     NON_MODULATION,
                 ],
             },
-            ColorModulated::NoseLineShape => ModulationIntent {
+            ColorModulated::FacelineWrinkle => ModulationIntent {
                 mode: M::AlphaTexture,
-                channels: [BLACK, NON_MODULATION, NON_MODULATION],
+                channels: [
+                    linear::COMMON_COLOR[usize::from(char.faceline_color)],
+                    NON_MODULATION,
+                    NON_MODULATION,
+                ],
             },
-            // I can't find any information on modulating FacelineWrinkle somehow.
-            // TODO: Check for accuracy here.
-            ColorModulated::FacelineWrinkle | ColorModulated::FacelineMakeup => ModulationIntent {
+            ColorModulated::FacelineMakeup => ModulationIntent {
                 mode: M::DirectTexture,
                 channels: [NON_MODULATION; 3],
             },
