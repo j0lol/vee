@@ -38,12 +38,18 @@ const TEX_MOLE_BASE_Y: f32 = 17.95986;
 const TEX_MOLE_BASE_W: f32 = tex_unit(0.0);
 const TEX_MOLE_BASE_H: f32 = tex_unit(0.0);
 
-const EYE_ROT_OFFSET: [u8; 50] = [
-    29, 28, 28, 28, 29, 28, 28, 28, 29, 28, 28, 28, 28, 29, 29, 28, 28, 28, 29, 29, 28, 29, 28, 29,
-    29, 28, 29, 28, 28, 29, 28, 28, 28, 29, 29, 29, 28, 28, 29, 29, 29, 28, 28, 29, 29, 29, 29, 29,
-    28, 28,
-];
+// FFLiCharInfo fn FFLiiGetEyeRotateOffset
+const fn eye_rot_offset(i: usize) -> u8 {
+    const OFFSETS: [u8; 80] = [
+        3, 4, 4, 4, 3, 4, 4, 4, 3, 4, 4, 4, 4, 3, 3, 4, 4, 4, 3, 3, 4, 3, 4, 3, 3, 4, 3, 4, 4, 3,
+        4, 4, 4, 3, 3, 3, 4, 4, 3, 3, 3, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 3, 4, 4, 3,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    ];
 
+    32 - OFFSETS[i]
+}
+
+// todo use above
 const EYEBROW_ROT_OFFSET: [u8; 24] = [
     26, 26, 27, 25, 26, 25, 26, 25, 28, 25, 26, 24, 27, 27, 26, 26, 25, 25, 26, 26, 27, 26, 25, 27,
 ];
@@ -83,16 +89,17 @@ impl MaskFaceParts {
     pub fn init(info: &NxCharInfo, resolution: f32) -> MaskFaceParts {
         // RFLi_TEX_UNIT
         let base_scale = tex_unit(resolution);
-        
+
         let eye_base_scale = tex_scale2dim(info.eye_scale.into());
         let eye_base_scale_y = 0.12 * f32::from(info.eye_aspect) + 0.64;
-        
+
         let eye_spacing_x = TEX_EYE_BASE_X + TEX_SCALE_X * f32::from(info.eye_x);
         let eye_y = TEX_EYE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.eye_y);
         let eye_w = TEX_EYE_BASE_W * eye_base_scale;
         let eye_h = TEX_EYE_BASE_H * eye_base_scale * eye_base_scale_y;
-        let eye_a =
-            tex_rotate2ang((info.eye_rotate + EYE_ROT_OFFSET[info.eye_type as usize]).into());
+        let eye_a = tex_rotate2ang(i16::from(
+            info.eye_rotate + eye_rot_offset(info.eye_type as usize),
+        ));
 
         let eye_l = FacePart {
             x: base_scale * (32.0 + eye_spacing_x),
@@ -111,7 +118,6 @@ impl MaskFaceParts {
             origin: ImageOrigin::Right,
         };
 
-
         let eb_base_scale = tex_scale2dim(info.eyebrow_scale.into());
         let eb_base_scale_y = 0.12 * f32::from(info.eyebrow_aspect) + 0.64;
 
@@ -128,7 +134,7 @@ impl MaskFaceParts {
             y: eb_y * base_scale,
             width: eb_w * base_scale,
             height: eb_h * base_scale,
-            angle_deg: 360.0 -  eb_a,
+            angle_deg: 360.0 - eb_a,
             origin: ImageOrigin::Left,
         };
         let eb_r = FacePart {
@@ -179,8 +185,8 @@ impl MaskFaceParts {
 
         let mole_x = TEX_MOLE_BASE_X + 2.0 * TEX_SCALE_X * f32::from(info.mole_x);
         let mole_y = TEX_MOLE_BASE_Y + RFL_MAGIC_Y_OFFSET * TEX_SCALE_Y * f32::from(info.mole_y);
-        let mole_w = TEX_MOLE_BASE_W * tex_scale2dim(info.mole_scale.into());
-        let mole_h = TEX_MOLE_BASE_H * tex_scale2dim(info.mole_scale.into());
+        let mole_w = tex_scale2dim(info.mole_scale.into());
+        let mole_h = tex_scale2dim(info.mole_scale.into());
 
         let mole = FacePart {
             x: mole_x * base_scale,

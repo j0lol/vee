@@ -1,8 +1,8 @@
-
 use approx::assert_relative_eq;
 use common::{get_mask_data, setup_renderer_linear_color};
 use vee_wgpu::ProgramState;
-use vfl::draw::mesh_building::mask_texture_meshes;
+use vfl::draw::mesh_building::{mask_texture_meshes, MaskModels};
+use vfl::draw::render_2d::Model2d;
 
 mod common;
 
@@ -12,7 +12,7 @@ fn render_mask() {
 
     let shapes = mask_texture_meshes(&e.char, &e.texture_header, &e.texture_data);
 
-    for mut shape in shapes {
+    for mut shape in shapes.all() {
         e.render
             .draw_model_2d(&mut shape, &e.texture.view, &mut e.encoder);
     }
@@ -31,15 +31,15 @@ fn render_mask() {
 fn render_mask_eyebrows() {
     let mut e = setup_renderer_linear_color();
 
-    let [ref _el, ref _er, ref mut ebl, ref mut ebr, ref _mouth] =
-        mask_texture_meshes(&e.char, &e.texture_header, &e.texture_data)[..]
-    else {
-        return;
-    };
+    let meshes = mask_texture_meshes(&e.char, &e.texture_header, &e.texture_data);
 
-    for shape in [ebl, ebr] {
+    if meshes.right_brow.is_none() {
+        return;
+    }
+
+    for mut item in meshes.all() {
         e.render
-            .draw_model_2d(shape, &e.texture.view, &mut e.encoder);
+            .draw_model_2d(&mut item, &e.texture.view, &mut e.encoder);
     }
 
     let image = e.render.output_texture(&e.texture, e.encoder);
@@ -58,28 +58,30 @@ fn mask_mtx() {
 
     let test_mask = get_mask_data();
 
-    let [
-        ref left_eye,
-        ref right_eye,
-        ref left_brow,
-        ref right_brow,
-        ref mouth,
-    ] = mask_texture_meshes(&e.char, &e.texture_header, &e.texture_data)[..]
-    else {
-        panic!()
-    };
+    let MaskModels {
+        left_eye,
+        right_eye,
+        left_brow,
+        right_brow,
+        left_mustache,
+        right_mustache,
+        mouth,
+        mole: _,
+    } = mask_texture_meshes(&e.char, &e.texture_header, &e.texture_data);
 
     let comparisons = [
-        (mouth.mvp_matrix, test_mask.mouth),
-        (left_brow.mvp_matrix, test_mask.left_eyebrow),
-        (right_brow.mvp_matrix, test_mask.right_eyebrow),
-        (left_eye.mvp_matrix, test_mask.left_eye),
-        (right_eye.mvp_matrix, test_mask.right_eye),
+        (mouth, test_mask.mouth),
+        (left_brow.unwrap(), test_mask.left_eyebrow),
+        (right_brow.unwrap(), test_mask.right_eyebrow),
+        (left_eye, test_mask.left_eye),
+        (right_eye, test_mask.right_eye),
     ];
 
     for (mtx, mut test_mtx) in comparisons {
-        test_mtx.w_axis.y *= -1.0; // OpenGL -> WebGPU clip space (top-down to bottom-up)
+        {
+            test_mtx.w_axis.y *= -1.0; // OpenGL -> WebGPU clip space (top-down to bottom-up)
 
-        assert_relative_eq!(mtx, test_mtx);
+            assert_relative_eq!(mtx.mvp_matrix, test_mtx);
+        }
     }
 }

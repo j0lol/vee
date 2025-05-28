@@ -11,22 +11,26 @@ type ModelOpt = Option<Model3d>;
 #[derive(Debug)]
 pub struct CharModel {
     pub face_line: Model,
+    pub forehead: ModelOpt,
     pub mask: Model,
     pub hair: ModelOpt,
     pub nose: ModelOpt,
     pub glasses: ModelOpt,
     pub nose_line: Model,
+    pub beard: ModelOpt,
 }
 
 impl CharModel {
     pub fn new(st: &mut State, encoder: &mut CommandEncoder) -> CharModel {
         CharModel {
             face_line: face_line(st, encoder).unwrap(),
+            forehead: forehead(st, encoder),
             mask: mask(st, encoder).unwrap(),
             hair: hair(st, encoder),
             nose: nose(st, encoder),
             glasses: glasses(st, encoder),
             nose_line: nose_line(st, encoder).unwrap(),
+            beard: beard(st, encoder),
         }
     }
 
@@ -37,6 +41,10 @@ impl CharModel {
         encoder: &mut CommandEncoder,
     ) {
         st.draw_model_3d(&mut self.face_line, texture_view, encoder);
+
+        if let Some(forehead) = self.forehead.as_mut() {
+            st.draw_model_3d(forehead, texture_view, encoder);
+        }
 
         if let Some(hair) = self.hair.as_mut() {
             st.draw_model_3d(hair, texture_view, encoder);
@@ -53,6 +61,9 @@ impl CharModel {
         if let Some(glasses) = self.glasses.as_mut() {
             st.draw_model_3d(glasses, texture_view, encoder);
         }
+        if let Some(beard) = self.beard.as_mut() {
+            st.draw_model_3d(beard, texture_view, encoder);
+        }
     }
 }
 
@@ -60,6 +71,16 @@ fn face_line(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
     load_shape(
         Shape::FaceLine,
         st.char_info.faceline_type,
+        st.char_info.faceline_color,
+        st,
+        encoder,
+    )
+}
+
+fn forehead(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
+    load_shape(
+        Shape::ForeheadNormal,
+        st.char_info.hair_type,
         st.char_info.faceline_color,
         st,
         encoder,
@@ -97,6 +118,20 @@ fn nose_line(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
 fn glasses(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
     if st.char_info.glass_type != 0 {
         load_shape(Shape::Glasses, 0, st.char_info.glass_color, st, encoder)
+    } else {
+        None
+    }
+}
+
+fn beard(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
+    if st.char_info.beard_type < 4 && st.char_info.beard_type != 0 {
+        load_shape(
+            Shape::Beard,
+            st.char_info.beard_type,
+            st.char_info.beard_color,
+            st,
+            encoder,
+        )
     } else {
         None
     }

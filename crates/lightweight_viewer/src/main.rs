@@ -23,10 +23,14 @@ pub const fn wgpu_color_to_vec4(color: wgpu::Color) -> Vec4 {
     )
 }
 
-const FACES: [&str; 5] = [
+const FACES: [&str; 10] = [
+    "chris.charinfo",
     "aspect.charinfo",
     "Jasmine.charinfo",
-    // "testguy.charinfo",
+    "Aiueome.charinfo",
+    "Bro Mole High.charinfo",
+    "alien fcln.charinfo",
+    "testguy.charinfo",
     "j0.charinfo",
     "charline.charinfo",
     "soyun.charinfo",

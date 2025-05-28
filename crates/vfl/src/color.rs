@@ -90,6 +90,8 @@ pub mod nx {
         NoseLineShape,
         FacelineMakeup,
         FacelineWrinkle,
+        Mole,
+        Mustache,
     }
 
     pub const NON_MODULATION: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
@@ -177,6 +179,18 @@ pub mod nx {
             ColorModulated::FacelineMakeup => ModulationIntent {
                 mode: M::DirectTexture,
                 channels: [NON_MODULATION; 3],
+            },
+            ColorModulated::Mole => ModulationIntent {
+                mode: M::AlphaTexture,
+                channels: [BLACK, BLACK, BLACK],
+            },
+            ColorModulated::Mustache => ModulationIntent {
+                mode: M::AlphaTexture,
+                channels: [
+                    linear::COMMON_COLOR[usize::from(char.beard_color)],
+                    NON_MODULATION,
+                    NON_MODULATION,
+                ],
             },
         }
     }

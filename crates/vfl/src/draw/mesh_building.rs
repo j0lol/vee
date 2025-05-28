@@ -13,6 +13,44 @@ pub use bytemuck::cast_slice;
 
 const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
 
+/// All the models required for rendering the mask texture.
+pub struct MaskModels {
+    pub left_eye: Model2d,
+    pub right_eye: Model2d,
+    pub left_brow: Option<Model2d>,
+    pub right_brow: Option<Model2d>,
+    pub left_mustache: Option<Model2d>,
+    pub right_mustache: Option<Model2d>,
+    pub mouth: Model2d,
+    pub mole: Option<Model2d>,
+}
+impl MaskModels {
+    /// Returns all the models in a `Vec` for easy consumption.
+    pub fn all(self) -> Vec<Model2d> {
+        [
+            Some(self.left_eye),
+            Some(self.right_eye),
+            self.left_brow,
+            self.right_brow,
+            Some(self.mouth),
+            self.left_mustache,
+            self.right_mustache,
+            self.mole,
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    /// Returns all the eyebrows in a `Vec` for easy consumption.
+    pub fn brows(self) -> Vec<Model2d> {
+        [self.left_brow, self.right_brow]
+            .into_iter()
+            .flatten()
+            .collect()
+    }
+}
+
 /// Returns the models needed for the mask texture.
 /// # Panics
 /// - Panics if image loading fails.
@@ -20,7 +58,7 @@ pub fn mask_texture_meshes(
     char: &NxCharInfo,
     res_texture: &ResourceTexture,
     file_texture: &[u8],
-) -> Vec<Model2d> {
+) -> MaskModels {
     let mask = MaskFaceParts::init(char, 256.0);
 
     let make_shape = |part: FacePart, modulated: ColorModulated, tex_data: TextureElement| {
@@ -34,9 +72,13 @@ pub fn mask_texture_meshes(
             256.0,
         );
 
-        let tex = tex_data.get_image(file_texture).unwrap().unwrap();
+        if part.width <= 0.0 || part.height <= 0.0 {
+            return None;
+        };
 
-        Model2d {
+        let tex = tex_data.get_image(file_texture).unwrap()?;
+
+        Some(Model2d {
             vertices,
             indices,
             tex: image::DynamicImage::ImageRgba8(tex).flipv(),
@@ -44,7 +86,7 @@ pub fn mask_texture_meshes(
             modulation: modulate(modulated, char),
             opaque: None,
             label: Some(format!("{modulated:?}")),
-        }
+        })
     };
 
     let left_eye = make_shape(
@@ -75,18 +117,40 @@ pub fn mask_texture_meshes(
         res_texture.mouth[char.mouth_type as usize],
     );
 
-    vec![left_eye, right_eye, left_brow, right_brow, mouth]
+    let left_mustache = make_shape(
+        mask.mustache[0],
+        ColorModulated::Mustache,
+        res_texture.mustache[char.mustache_type as usize],
+    );
+    let right_mustache = make_shape(
+        mask.mustache[1],
+        ColorModulated::Mustache,
+        res_texture.mustache[char.mustache_type as usize],
+    );
+
+    let mole = make_shape(
+        mask.mole,
+        ColorModulated::Mole,
+        res_texture.mole[if char.mole_type == 0 { 0 } else { 1 }],
+    );
+
+    MaskModels {
+        left_eye: left_eye.unwrap(),
+        right_eye: right_eye.unwrap(),
+        left_brow,
+        right_brow,
+        left_mustache,
+        right_mustache,
+        mouth: mouth.unwrap(),
+        mole,
+    }
 }
 
-pub fn model_view_matrix(
-    translation: Vec2,
-    scale: Vec2,
-    rot_z: f32,
-) -> Mat4 {
+pub fn model_view_matrix(translation: Vec2, scale: Vec2, rot_z: f32) -> Mat4 {
     Mat4::from_scale_rotation_translation(
-        (scale * vec2(TEX_SCALE_X, TEX_SCALE_Y)).extend(1.0), 
-        Quat::from_rotation_z(-rot_z.to_radians()), 
-        translation.extend(0.0)
+        (scale * vec2(TEX_SCALE_X, TEX_SCALE_Y)).extend(1.0),
+        Quat::from_rotation_z(-rot_z.to_radians()),
+        translation.extend(0.0),
     )
 }
 
@@ -94,8 +158,7 @@ fn v2(x: f32, y: f32) -> [f32; 3] {
     [x, y, 0.0]
 }
 
-const OPENGL_TO_WEBGPU_Y_FLIP: Mat4 =
-    Mat4::from_cols(Vec4::X, Vec4::NEG_Y, Vec4::Z, Vec4::W);
+const OPENGL_TO_WEBGPU_Y_FLIP: Mat4 = Mat4::from_cols(Vec4::X, Vec4::NEG_Y, Vec4::Z, Vec4::W);
 
 // RFL_MakeTex.c :817
 /// # Panics
@@ -113,13 +176,8 @@ pub fn quad(
     let s0: f32;
     let s1: f32;
 
-    let mv_mtx = model_view_matrix(
-        vec2(x, resolution - y),
-        vec2(width, height ),
-        rot_z,
-    );
+    let mv_mtx = model_view_matrix(vec2(x, resolution - y), vec2(width, height), rot_z);
     // let mv_mtx = mv_mtx.transpose();
-
 
     let p_mtx = Mat4::orthographic_rh(0.0, resolution, 0.0, resolution, 200.0, -200.0);
     // let p_mtx = p_mtx.transpose();
@@ -127,7 +185,6 @@ pub fn quad(
     let mvp_mtx = p_mtx * mv_mtx;
 
     //mvp_mtx.y_axis[1] *= -1.0;
-
 
     // let mvp_mtx = Mat4 {
     //     x_axis: vec4(0.33806923, 0.146022707, 0.0, 0.0),

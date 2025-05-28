@@ -1,10 +1,17 @@
 # This justfile is for my convenience only.
 # Please don't use this unless you need to.
+#
+# Xcode GPU DEBUGGING:
+# How to get your own .xcworkspace (the stupid way)
+# Select Menu Item: Xcode -> Debug executable -> select lightweight_viewer
+# Select Menu Item: File -> Workspace settings
+# In popup: Derived Data -> Workspace-relative Location
+# Press the little (->) button by the path to open it in Finder
+# Copy the .xcworkspace file to somewhere safe
 
-# Yeah, idk.
 xcode:
     cargo build --bin lightweight_viewer
-    open /private/var/folders/sl/mys5xs454210crk192gs9sk00000gn/T/BED4E4F3-9BCC-436E-992A-9352729F3DFA/lightweight_viewer.xcworkspace
+    open ~/Projects/lightweight_viewer.xcworkspace
 
 profile:
     just profile-instrument
@@ -13,6 +20,7 @@ profile:
 profile-samply:
     cargo build --bin lightweight_viewer --profile profiling
     BROWSER=/Applications/Firefox\ Nightly.app/Contents/MacOS/firefox samply record ./target/profiling/lightweight_viewer
+
 profile-samply-debug:
     cargo build --bin lightweight_viewer
     BROWSER=/Applications/Firefox\ Nightly.app/Contents/MacOS/firefox samply record ./target/debug/lightweight_viewer

@@ -48,7 +48,7 @@ pub(crate) fn draw_mask(st: &mut State, texture_view: &TextureView, encoder: &mu
 
     let shapes = mask_texture_meshes(&st.char_info, res_texture, file_texture);
 
-    for mut shape in shapes {
+    for mut shape in shapes.all() {
         st.draw_model_2d(&mut shape, texture_view, encoder);
     }
 }
@@ -103,7 +103,7 @@ fn get_faceline_textures(
             if st.char_info.beard_type >= 4 {
                 load_faceline_texture(
                     st,
-                    res_texture.beard[usize::from(st.char_info.beard_type - 3)],
+                    res_texture.beard[usize::from(st.char_info.beard_type - 4)],
                     ColorModulated::FacelineBeard,
                 )
             } else {
@@ -195,6 +195,11 @@ pub(crate) fn load_shape(
 
     // Some meshes need positioning.
     let position = match shape_kind {
+        Shape::HairNormal | Shape::ForeheadNormal => {
+            // FFLiCharModelCreator.cpp :638
+            Vec3::from_array(faceline_transform.hair_translate)
+        }
+        Shape::Beard => Vec3::from_array(faceline_transform.beard_translate),
         Shape::Nose | Shape::NoseLine => {
             let nose = Vec3::from_array(faceline_transform.nose_translate);
             let nose_y = f32::from(st.char_info.nose_y);
@@ -206,7 +211,7 @@ pub(crate) fn load_shape(
             let nose = Vec3::from_array(faceline_transform.nose_translate);
             let glass_y = f32::from(st.char_info.glass_y);
 
-            // FFLiCharModelCreator.cpp :691
+            // FFLiCharModelCreator.cpp fn:InitShapes
             vec3(nose.x, nose.y + (glass_y - 11.0) * -1.5 + 5.0, nose.z + 2.0)
         }
         _ => Vec3::ZERO,
@@ -218,6 +223,13 @@ pub(crate) fn load_shape(
         // RFL_Model.c :705
         Shape::Nose | Shape::NoseLine => {
             Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4)
+        }
+        Shape::HairNormal => {
+            if st.char_info.hair_flip != 0 {
+                vec3(-1.0, 1.0, 1.0)
+            } else {
+                Vec3::ONE
+            }
         }
         _ => Vec3::ONE,
     };
@@ -285,7 +297,7 @@ pub(crate) fn mesh_to_model(
         vertices,
         indices,
         color: match shape {
-            Shape::HairNormal => vfl::color::nx::linear::COMMON_COLOR[color].into(),
+            Shape::HairNormal | Shape::Beard => vfl::color::nx::linear::COMMON_COLOR[color].into(),
             Shape::FaceLine | Shape::ForeheadNormal | Shape::Nose => {
                 vfl::color::nx::linear::FACELINE_COLOR[color].into()
             }

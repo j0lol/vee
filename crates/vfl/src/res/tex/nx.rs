@@ -1,6 +1,7 @@
 use crate::{res::shape::nx::ResourceCommonAttribute, utils::inflate_bytes};
 use binrw::BinRead;
-use image::{ImageBuffer, Rgba, RgbaImage};
+use image::ExtendedColorType::Bgra8;
+use image::{ExtendedColorType, ImageBuffer, Rgba, RgbaImage};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::error::Error;
 use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
@@ -203,12 +204,18 @@ impl TextureElement {
             Err(e) => return Err(e),
         };
 
-        let img: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::from_raw(
-            self.texture.width.into(),
-            self.texture.height.into(),
-            bytes,
-        )
-        .unwrap();
+        // Something in this process is making `Bgra` images. Wah.
+        // let bytes = bytes
+        //     .chunks_exact(4)
+        //     .flat_map(|v| {
+        //         let [b, g, r, a] = v else { panic!() }; // Should be fine.
+        //         [*r, *g, *b, *a]
+        //     })
+        //     .collect();
+
+        let img: ImageBuffer<Rgba<u8>, Vec<u8>> =
+            RgbaImage::from_raw(self.texture.width.into(), self.texture.height.into(), bytes)
+                .unwrap();
 
         Ok(Some(img))
     }
