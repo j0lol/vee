@@ -6,6 +6,7 @@ members = [
     "crates/lightweight_viewer",
     "crates/vee_wgpu",
     "crates/vfl",
+    "crates/vfl-cli",
 ]
 
 [workspace.dependencies]
