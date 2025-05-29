@@ -164,6 +164,30 @@ fn draw_glasses(st: &mut State, texture_view: &TextureView, encoder: &mut Comman
     );
 }
 
+fn draw_cap(st: &mut State, texture_view: &TextureView, encoder: &mut CommandEncoder) {
+    let res_texture = st.resources.texture_header;
+
+    let texture = load_faceline_texture(
+        st,
+        res_texture.hat[st.char_info.hair_type as usize],
+        ColorModulated::Cap,
+    );
+
+    let Some((rendered_texture, modulation)) = texture else {
+        return;
+    };
+
+    st.draw_texture(
+        DrawableTexture {
+            rendered_texture,
+            modulation,
+            opaque: None,
+        },
+        texture_view,
+        encoder,
+    );
+}
+
 pub(crate) fn load_shape(
     shape_kind: Shape,
     shape_index: u8,
@@ -220,6 +244,10 @@ pub(crate) fn load_shape(
     let scale = match shape_kind {
         // RFL_Model.c :784
         Shape::Glasses => Vec3::splat(0.15 * f32::from(st.char_info.glass_scale) + 0.4),
+        Shape::HairCap | Shape::ForeheadCap | Shape::HatCap => {
+            dbg!(shape_kind);
+            faceline_transform.hair_translate.into()
+        }
         // RFL_Model.c :705
         Shape::Nose | Shape::NoseLine => {
             Vec3::splat(0.175 * f32::from(st.char_info.nose_scale) + 0.4)
@@ -253,6 +281,7 @@ pub(crate) fn load_shape(
         Shape::Mask => draw_tex(draw_mask, uvec2(512, 512)),
         Shape::FaceLine => draw_tex(draw_faceline, uvec2(512, 512)),
         Shape::Glasses => draw_tex(draw_glasses, uvec2(512, 512)),
+        Shape::HatCap | Shape::HairCap | Shape::ForeheadCap => draw_tex(draw_cap, uvec2(512, 512)),
         _ => None,
     };
 

@@ -18,6 +18,7 @@ pub struct CharModel {
     pub glasses: ModelOpt,
     pub nose_line: Model,
     pub beard: ModelOpt,
+    pub cap: ModelOpt,
 }
 
 impl CharModel {
@@ -31,6 +32,7 @@ impl CharModel {
             glasses: glasses(st, encoder),
             nose_line: nose_line(st, encoder).unwrap(),
             beard: beard(st, encoder),
+            cap: cap(st, encoder),
         }
     }
 
@@ -63,6 +65,9 @@ impl CharModel {
         }
         if let Some(beard) = self.beard.as_mut() {
             st.draw_model_3d(beard, texture_view, encoder);
+        }
+        if let Some(cap) = self.cap.as_mut() {
+            st.draw_model_3d(cap, texture_view, encoder);
         }
     }
 }
@@ -135,4 +140,14 @@ fn beard(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
     } else {
         None
     }
+}
+
+fn cap(st: &mut State, encoder: &mut CommandEncoder) -> ModelOpt {
+    dbg!(load_shape(
+        Shape::HatCap,
+        st.char_info.hair_type,
+        st.char_info.favorite_color,
+        st,
+        encoder,
+    ))
 }
