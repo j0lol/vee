@@ -32,7 +32,7 @@ pub struct Everything {
 }
 
 pub fn setup_renderer_linear_color() -> Everything {
-    let renderer = HeadlessRenderer::new();
+    let renderer = HeadlessRenderer::new(SHAPE_MID_DAT, TEXTURE_MID_SRGB_DAT);
     let encoder = renderer
         .device()
         .create_command_encoder(&Default::default());
@@ -67,7 +67,7 @@ pub fn setup_renderer_linear_color() -> Everything {
 
 #[allow(dead_code)]
 pub fn setup_renderer() -> Everything {
-    let renderer = HeadlessRenderer::new();
+    let renderer = HeadlessRenderer::new(SHAPE_MID_DAT, TEXTURE_MID_SRGB_DAT);
     let encoder = renderer
         .device()
         .create_command_encoder(&Default::default());

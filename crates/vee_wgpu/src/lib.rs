@@ -1,9 +1,123 @@
+//! A library for using `vfl` to render _Caricatures_ cross-platform.
+//! To use this library to render a `Char` from `vfl`,
+//! implement `ProgramState` on your project's `State` method — that is the method that contains handles like `wgpu::Device`.
+//!
+//! If you don't need to work in real time, you might want to just use this library's `HeadlessRenderer`.
+//! If you need more help integrating this library, try reading the source of `lightweight_viewer` for examples.
+//!
+//! # Example
+//!
+//! ```
+//! use std::error::Error;
+//! use std::fs::File;
+//! use std::io::BufReader;
+//! use std::rc::Rc;
+//! use wgpu::wgt::CommandEncoderDescriptor;
+//! use vee_wgpu::draw::CharModel;
+//! use vee_wgpu::ProgramState;
+//! use vee_wgpu::texture::TextureBundle;
+//! use vfl::charinfo::nx::{BinRead, NxCharInfo};
+//! use vfl::res::shape::nx::ResourceShape;
+//! use vfl::res::tex::nx::ResourceTexture;
+//!
+//! pub struct ResourceData {
+//!     pub(crate) texture_header: ResourceTexture,
+//!     pub(crate) shape_header: ResourceShape,
+//!     pub(crate) texture_data: Rc<Vec<u8>>,
+//!     pub(crate) shape_data: Rc<Vec<u8>>,
+//! }
+//!
+//! pub struct State {
+//!     device: wgpu::Device,
+//!     queue: wgpu::Queue,
+//!     camera_bgl: wgpu::BindGroupLayout,
+//!     camera_bg: wgpu::BindGroup,
+//!     surface_fmt: wgpu::TextureFormat,
+//!     depth_texture: TextureBundle,
+//!     resource_data: ResourceData,
+//!     char: String,
+//! }
+//!
+//! // If you bug me enough about this, I might just make a macro for this.
+//! impl ProgramState for State {
+//!     fn device(&self) -> wgpu::Device {
+//!         self.device.clone()
+//!     }
+//!
+//!     fn queue(&self) -> wgpu::Queue {
+//!         self.queue.clone()
+//!     }
+//!
+//!     fn camera_bgl(&self) -> &wgpu::BindGroupLayout {
+//!         &self.camera_bgl
+//!     }
+//!
+//!     fn camera_bg(&self) -> &wgpu::BindGroup {
+//!         &self.camera_bg
+//!     }
+//!
+//!     fn surface_fmt(&self) -> wgpu::TextureFormat {
+//!         self.surface_fmt
+//!     }
+//!
+//!     fn depth_texture(&self) -> &TextureBundle {
+//!         &self.depth_texture
+//!     }
+//!
+//!     fn texture_header(&self) -> ResourceTexture {
+//!         self.resource_data.texture_header
+//!     }
+//!
+//!     fn shape_header(&self) -> ResourceShape {
+//!         self.resource_data.shape_header
+//!     }
+//!
+//!     fn texture_data(&self) -> Rc<Vec<u8>> {
+//!         self.resource_data.texture_data.clone()
+//!     }
+//!
+//!     fn shape_data(&self) -> Rc<Vec<u8>> {
+//!         self.resource_data.shape_data.clone()
+//!     }
+//! }
+//!
+//! impl State {
+//!     fn texture_view(&mut self) -> wgpu::TextureView {
+//!         // You'll need to render TO something. This is where you would pull in a dependency
+//!         // like `winit` for drawing to a window, or draw to an image and save it
+//!         // if you don't need to work in real time.
+//!         todo!()
+//!     }
+//!
+//!     fn render(&mut self) -> Result<(), Box<dyn Error>> {
+//!         let texture_view = self.texture_view();
+//!
+//!         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor::default());
+//!
+//!         let char = NxCharInfo::read(&mut BufReader::new(File::open(&self.char)?))?;
+//!         let mut char = CharModel::new(self, &char, &mut encoder);
+//!         char.render(self, &texture_view, &mut encoder);
+//!
+//!         let command_buffer = encoder.finish();
+//!         // Present here
+//!
+//!         Ok(())
+//!     }
+//! }
+//!
+//!
+//! ```
+
 use bytemuck::cast_slice;
+use std::rc::Rc;
 use texture::TextureBundle;
 use vfl::draw::Vertex;
+use vfl::res::shape::nx::ResourceShape;
+use vfl::res::tex::nx::ResourceTexture;
+use wgpu::{include_wgsl, util::DeviceExt, PipelineCompilationOptions, TexelCopyTextureInfo};
 use wgpu::{BlendState, CommandEncoder, TextureView};
-use wgpu::{PipelineCompilationOptions, TexelCopyTextureInfo, include_wgsl, util::DeviceExt};
 
+pub mod draw;
 pub mod headless;
 
 pub type Model3d = vfl::draw::render_3d::GenericModel3d<TextureBundle>;
@@ -18,6 +132,7 @@ struct CharShapeUniform {
     _pad2: f32,
 }
 
+/// I got tired of reimplementing this for every uniform buffer.
 trait UniformBuffer {
     const ATTRIBS: [wgpu::VertexAttribute; 3];
 
@@ -47,6 +162,8 @@ pub struct TextureTransformUniform {
     pub pad: [u32; 3],
 }
 
+/// `wgpu` requires a lot of state.
+/// Implement this on your state structure to use this library's functions.
 pub trait ProgramState {
     fn device(&self) -> wgpu::Device;
     fn queue(&self) -> wgpu::Queue;
@@ -54,6 +171,11 @@ pub trait ProgramState {
     fn camera_bg(&self) -> &wgpu::BindGroup;
     fn surface_fmt(&self) -> wgpu::TextureFormat;
     fn depth_texture(&self) -> &TextureBundle;
+
+    fn texture_header(&self) -> ResourceTexture;
+    fn shape_header(&self) -> ResourceShape;
+    fn texture_data(&self) -> Rc<Vec<u8>>;
+    fn shape_data(&self) -> Rc<Vec<u8>>;
 
     fn draw_texture(
         &mut self,
@@ -626,7 +748,7 @@ pub mod texture {
                 dimension: wgpu::TextureDimension::D2,
                 format: Self::DEPTH_FORMAT,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                       | wgpu::TextureUsages::TEXTURE_BINDING,
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             };
             let texture = device.create_texture(&desc);
@@ -673,8 +795,8 @@ pub mod texture {
                 dimension: wgpu::TextureDimension::D2,
                 format: TextureFormat::Bgra8Unorm,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                       | wgpu::TextureUsages::TEXTURE_BINDING
-                       | wgpu::TextureUsages::COPY_SRC,
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC,
                 view_formats: &[TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
             };
             let texture = device.create_texture(&desc);
@@ -715,8 +837,8 @@ pub mod texture {
                 dimension: wgpu::TextureDimension::D2,
                 format: TextureFormat::Bgra8UnormSrgb,
                 usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                       | wgpu::TextureUsages::TEXTURE_BINDING
-                       | wgpu::TextureUsages::COPY_SRC,
+                    | wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC,
                 view_formats: &[TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
             };
             let texture = device.create_texture(&desc);

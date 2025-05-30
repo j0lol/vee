@@ -1,12 +1,21 @@
-use std::f32::consts::FRAC_PI_2;
-
+use crate::{texture::TextureBundle, ProgramState};
 use camera::{Camera, CameraUniform};
-use glam::{UVec2, Vec3, uvec2};
+use glam::{uvec2, UVec2, Vec3};
 use image::{DynamicImage, RgbaImage};
-use wgpu::{CommandEncoder, DeviceDescriptor, util::DeviceExt};
+use std::f32::consts::FRAC_PI_2;
+use std::fs::File;
+use std::rc::Rc;
+use vfl::charinfo::nx::BinRead;
+use vfl::res::shape::nx::ResourceShape;
+use vfl::res::tex::nx::ResourceTexture;
+use wgpu::{util::DeviceExt, CommandEncoder, DeviceDescriptor};
 
-use crate::{ProgramState, texture::TextureBundle};
-
+pub struct ResourceData {
+    pub(crate) texture_header: ResourceTexture,
+    pub(crate) shape_header: ResourceShape,
+    pub(crate) texture_data: Rc<Vec<u8>>,
+    pub(crate) shape_data: Rc<Vec<u8>>,
+}
 pub struct HeadlessRenderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -14,6 +23,7 @@ pub struct HeadlessRenderer {
     camera_bg: wgpu::BindGroup,
     surface_fmt: wgpu::TextureFormat,
     depth_texture: TextureBundle,
+    resource_data: ResourceData,
 }
 
 impl ProgramState for HeadlessRenderer {
@@ -40,18 +50,29 @@ impl ProgramState for HeadlessRenderer {
     fn depth_texture(&self) -> &TextureBundle {
         &self.depth_texture
     }
+
+    fn texture_header(&self) -> ResourceTexture {
+        self.resource_data.texture_header
+    }
+
+    fn shape_header(&self) -> ResourceShape {
+        self.resource_data.shape_header
+    }
+
+    fn texture_data(&self) -> Rc<Vec<u8>> {
+        self.resource_data.texture_data.clone()
+    }
+
+    fn shape_data(&self) -> Rc<Vec<u8>> {
+        self.resource_data.shape_data.clone()
+    }
 }
 
-impl Default for HeadlessRenderer {
-    fn default() -> HeadlessRenderer {
-        HeadlessRenderer::new()
-    }
-}
 impl HeadlessRenderer {
-    pub fn new() -> HeadlessRenderer {
-        pollster::block_on(HeadlessRenderer::async_new())
+    pub fn new(shape_file: &str, texture_file: &str) -> HeadlessRenderer {
+        pollster::block_on(HeadlessRenderer::async_new(shape_file, texture_file))
     }
-    async fn async_new() -> HeadlessRenderer {
+    async fn async_new(shape_file: &str, texture_file: &str) -> HeadlessRenderer {
         const SIZE: UVec2 = uvec2(512, 512);
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
@@ -119,6 +140,18 @@ impl HeadlessRenderer {
             label: Some("camera_bind_group"),
         });
 
+        let shape_header = ResourceShape::read(&mut File::open(shape_file).unwrap()).unwrap();
+        let texture_header = ResourceTexture::read(&mut File::open(texture_file).unwrap()).unwrap();
+        let shape_data = Rc::new(std::fs::read(shape_file).unwrap());
+        let texture_data = Rc::new(std::fs::read(texture_file).unwrap());
+
+        let resource_data = ResourceData {
+            shape_header,
+            texture_header,
+            shape_data,
+            texture_data,
+        };
+
         HeadlessRenderer {
             device,
             queue,
@@ -126,6 +159,7 @@ impl HeadlessRenderer {
             camera_bg,
             surface_fmt,
             depth_texture,
+            resource_data,
         }
     }
 
@@ -143,7 +177,7 @@ impl HeadlessRenderer {
             let output_buffer_desc = wgpu::BufferDescriptor {
                 size: output_buffer_size,
                 usage: wgpu::BufferUsages::COPY_DST
-                        // this tells wpgu that we want to read this buffer from the cpu
+                        // this tells `wpgu` that we want to read this buffer from the CPU
                         | wgpu::BufferUsages::MAP_READ,
                 label: None,
                 mapped_at_creation: false,
@@ -177,7 +211,7 @@ impl HeadlessRenderer {
                 let buffer_slice = output_buffer.slice(..);
 
                 // NOTE: We have to create the mapping THEN device.poll() before await
-                // the future. Otherwise the application will freeze.
+                // the future. Otherwise, the application will freeze.
                 let (tx, rx) = futures_intrusive::channel::shared::oneshot_channel();
                 buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
                     tx.send(result).unwrap();

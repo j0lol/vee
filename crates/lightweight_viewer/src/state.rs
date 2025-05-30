@@ -1,10 +1,11 @@
 use crate::camera::{Camera, CameraUniform};
-use crate::char_model::CharModel;
 use crate::{DARK_REBECCA_PURPLE, FACES};
 use glam::{uvec2, UVec2, Vec3};
 use nest_struct::nest_struct;
+use std::rc::Rc;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
+use vee_wgpu::draw::CharModel;
 use vee_wgpu::texture::TextureBundle;
 use vee_wgpu::ProgramState;
 use vfl::res::shape::nx::ResourceShape;
@@ -16,21 +17,23 @@ use vfl::{
 use wgpu::{util::DeviceExt, Backends};
 use winit::window::Window;
 
-// Yeah, yeah.
-//
-// - What is this?
-//    It's a CharModel wrapped in a Mutex and a OnceLock.
-//    A Mutex allows multiple references to a value that can be mutated.
-//    This is normally not allowed in Rust (see &mut rules.)
-//    A OnceLock is basically a wrapper for a maybe uninitialised value.
-//    We use it to initialize the model "later" (once we can render.)
-//    It's in a `static` so we can use it anywhere.
-//    It's like a constant pointer to a location in memory.
-//
-// - Why isn't this in State?
-//    It needs to be global (so we can reference it in rendering),
-//    but it needs to take a &mut reference to State to be initialized.
-//    The compiler basically complained at me too much.
+/// Yeah, yeah.
+///
+/// - _What is this?_
+///
+///   It's a `CharModel` wrapped in a `Mutex` and a `OnceLock`.
+///   A `Mutex` allows multiple references to a value that can be mutated.
+///   This is normally not allowed in Rust (see `&mut` rules.)
+///   A `OnceLock` is basically a wrapper for a maybe uninitialised value.
+///   We use it to initialize the model "later" (once we can render.)
+///   It's in a `static` so we can use it anywhere.
+///   It's like a constant pointer to a location in memory.
+///
+/// - _Why isn't this in `State`?_
+///
+///   It needs to be global (so we can reference it in rendering),
+///   but it needs to take a `&mut` reference to `State` to be initialized.
+///   The compiler basically complained at me too much.
 static CHAR_MODEL: OnceLock<Mutex<CharModel>> = OnceLock::new();
 
 // Static lifetime 'cos it's a static.
@@ -38,12 +41,14 @@ pub fn char_model() -> MutexGuard<'static, CharModel> {
     CHAR_MODEL.get().unwrap().lock().unwrap()
 }
 
-// Wgpu requires a LOT of state for rendering. It's kind of annoying.
-// We put our own stuff in here too (camera, resource data, etc.)
-// Nested struct definitions requires a macro...
-// See: https://github.com/rust-lang/rfcs/pull/2584
-// There are a few macros that implement this, I might swap it later
-// See: {nest_struct, structstruck, nestify}
+/// `wgpu` requires a LOT of state for rendering. It's kind of annoying.
+/// We put our own stuff in here too (camera, resource data, etc.)
+///
+/// Nested struct definitions requires a macro...
+/// - See: https://github.com/rust-lang/rfcs/pull/2584
+///
+/// There are a few macros that implement this, I might swap it later
+/// - See: {`nest_struct`, `structstruck`, `nestify`}
 #[nest_struct]
 pub struct State {
     pub(crate) window: Arc<Window>,
@@ -64,13 +69,13 @@ pub struct State {
     pub(crate) resources: ResourceData! {
         pub(crate) texture_header: ResourceTexture,
         pub(crate) shape_header: ResourceShape,
-        pub(crate) texture_data: Vec<u8>,
-        pub(crate) shape_data: Vec<u8>,
+        pub(crate) texture_data: Rc<Vec<u8>>,
+        pub(crate) shape_data: Rc<Vec<u8>>,
     },
 }
 
 impl State {
-    // All of our GPU setup code. Async because `winit` is annoying.
+    /// All of our GPU setup code. Async because `winit` is annoying.
     pub async fn new(window: Arc<Window>) -> State {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: Backends::PRIMARY | Backends::SECONDARY,
@@ -150,8 +155,8 @@ impl State {
         let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
         let texture_header =
             ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-        let shape_data = std::fs::read(SHAPE_MID_DAT).unwrap();
-        let texture_data = std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
+        let shape_data = Rc::new(std::fs::read(SHAPE_MID_DAT).unwrap());
+        let texture_data = Rc::new(std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap());
 
         let resources = ResourceData {
             shape_header,
@@ -229,23 +234,25 @@ impl State {
                 occlusion_query_set: None,
             });
         }
+        let char_info = self.char_info.clone();
 
         // Instantiate a CharModel if we need it.
         if CHAR_MODEL.get().is_none() {
-            let new_model = CharModel::new(self, &mut encoder);
+            let new_model = CharModel::new(self, &char_info, &mut encoder);
             CHAR_MODEL.set(Mutex::new(new_model)).unwrap();
         }
         if self.char_remake {
             self.char_remake = false;
 
-            let new_model = CharModel::new(self, &mut encoder);
+            let new_model = CharModel::new(self, &char_info, &mut encoder);
 
             let mut state = CHAR_MODEL.get().unwrap().lock().unwrap();
             *state = new_model;
         }
 
         // Actually render a CharModel.
-        char_model().render(self, &texture_view, &mut encoder);
+        let mut model = char_model();
+        model.render(self, &texture_view, &mut encoder);
 
         // Submit the command in the queue to execute
         self.queue.submit([encoder.finish()]);
@@ -309,10 +316,6 @@ impl State {
             self.char_info = NxCharInfo::read(&mut char_info).unwrap();
 
             self.char_remake = true;
-            // if CHAR_MODEL.get().is_none() {
-            //     let new_model = CharModel::new(self, &mut encoder);
-            //     CHAR_MODEL.set(Mutex::new(new_model)).unwrap();
-            // }
         }
 
         self.camera_uniform.update_view_proj(&self.camera);
@@ -347,5 +350,21 @@ impl ProgramState for State {
 
     fn depth_texture(&self) -> &TextureBundle {
         &self.depth_texture
+    }
+
+    fn texture_header(&self) -> ResourceTexture {
+        self.resources.texture_header
+    }
+
+    fn shape_header(&self) -> ResourceShape {
+        self.resources.shape_header
+    }
+
+    fn texture_data(&self) -> Rc<Vec<u8>> {
+        self.resources.texture_data.clone()
+    }
+
+    fn shape_data(&self) -> Rc<Vec<u8>> {
+        self.resources.shape_data.clone()
     }
 }
