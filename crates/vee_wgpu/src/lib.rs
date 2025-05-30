@@ -1,9 +1,12 @@
 //! A library for using `vfl` to render _Caricatures_ cross-platform.
 //! To use this library to render a `Char` from `vfl`,
-//! implement `ProgramState` on your project's `State` method — that is the method that contains handles like `wgpu::Device`.
+//! implement `ProgramState` on your project's `State` method — that is the method
+//! that contains handles like `wgpu::Device`.
 //!
-//! If you don't need to work in real time, you might want to just use this library's `HeadlessRenderer`.
-//! If you need more help integrating this library, try reading the source of `lightweight_viewer` for examples.
+//! If you don't need to work in real time, you might want to just
+//! use this library's `HeadlessRenderer`. If you need more help
+//! integrating this library, try reading the source of `lightweight_viewer`
+//! for examples.
 //!
 //! # Example
 //!
@@ -16,9 +19,9 @@
 //! use vee_wgpu::draw::CharModel;
 //! use vee_wgpu::ProgramState;
 //! use vee_wgpu::texture::TextureBundle;
-//! use vfl::charinfo::nx::{BinRead, NxCharInfo};
-//! use vfl::res::shape::nx::ResourceShape;
-//! use vfl::res::tex::nx::ResourceTexture;
+//! use vee_parse::{BinRead, NxCharInfo};
+//! use vee_resources::shape::ResourceShape;
+//! use vee_resources::tex::ResourceTexture;
 //!
 //! pub struct ResourceData {
 //!     pub(crate) texture_header: ResourceTexture,
@@ -92,7 +95,7 @@
 //!     fn render(&mut self) -> Result<(), Box<dyn Error>> {
 //!         let texture_view = self.texture_view();
 //!
-//!         let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor::default());
+//!         let mut encoder = self.device.create_command_encoder(&Default::default());
 //!
 //!         let char = NxCharInfo::read(&mut BufReader::new(File::open(&self.char)?))?;
 //!         let mut char = CharModel::new(self, &char, &mut encoder);
@@ -111,17 +114,20 @@
 use bytemuck::cast_slice;
 use std::rc::Rc;
 use texture::TextureBundle;
-use vfl::draw::Vertex;
-use vfl::res::shape::nx::ResourceShape;
-use vfl::res::tex::nx::ResourceTexture;
+use vee_models::model::{DrawableTexture, GenericModel3d, Model2d, Vertex};
+use vee_resources::shape::ResourceShape;
+use vee_resources::tex::ResourceTexture;
 use wgpu::{include_wgsl, util::DeviceExt, PipelineCompilationOptions, TexelCopyTextureInfo};
 use wgpu::{BlendState, CommandEncoder, TextureView};
 
 pub mod draw;
 pub mod headless;
+pub mod texture;
 
-pub type Model3d = vfl::draw::render_3d::GenericModel3d<TextureBundle>;
+/// A 3d model.
+pub type Model3d = GenericModel3d<TextureBundle>;
 
+/// Uniform buffer that contains transformational and color data for rendering the `CharModel`.
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 struct CharShapeUniform {
@@ -140,7 +146,7 @@ trait UniformBuffer {
 }
 impl UniformBuffer for Vertex {
     const ATTRIBS: [wgpu::VertexAttribute; 3] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2, 2 => Float32x3];
+        wgpu::vertex_attr_array![0 => Float16x4, 1 => Float16x2, 2 => Float32x3];
 
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -153,13 +159,13 @@ impl UniformBuffer for Vertex {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct TextureTransformUniform {
-    pub mvp_matrix: [[f32; 4]; 4],
-    pub channel_replacements_r: [f32; 4],
-    pub channel_replacements_g: [f32; 4],
-    pub channel_replacements_b: [f32; 4],
-    pub texture_type: u32,
-    pub pad: [u32; 3],
+struct TextureTransformUniform {
+    mvp_matrix: [[f32; 4]; 4],
+    channel_replacements_r: [f32; 4],
+    channel_replacements_g: [f32; 4],
+    channel_replacements_b: [f32; 4],
+    texture_type: u32,
+    pad: [u32; 3],
 }
 
 /// `wgpu` requires a lot of state.
@@ -179,7 +185,7 @@ pub trait ProgramState {
 
     fn draw_texture(
         &mut self,
-        tex: vfl::draw::DrawableTexture,
+        tex: DrawableTexture,
         view: &TextureView,
         encoder: &mut CommandEncoder,
     ) {
@@ -188,7 +194,7 @@ pub trait ProgramState {
 
     fn draw_model_2d(
         &mut self,
-        mesh: &mut vfl::draw::render_2d::Model2d,
+        mesh: &mut Model2d,
         view: &TextureView,
         encoder: &mut CommandEncoder,
     ) {
@@ -636,232 +642,6 @@ pub trait ProgramState {
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
             render_pass.draw_indexed(0..mesh.indices.len().try_into().unwrap(), 0, 0..1);
-        }
-    }
-}
-
-pub mod texture {
-    use std::error::Error;
-    use std::fmt::Debug;
-
-    use glam::UVec2;
-    use image::GenericImageView;
-    use wgpu::TextureFormat;
-
-    pub struct TextureBundle {
-        #[allow(unused)]
-        pub texture: wgpu::Texture,
-        pub view: wgpu::TextureView,
-        pub sampler: wgpu::Sampler,
-    }
-    impl Debug for TextureBundle {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("Texture").finish()
-        }
-    }
-
-    #[allow(unused)]
-    impl TextureBundle {
-        pub fn from_bytes(
-            device: &wgpu::Device,
-            queue: &wgpu::Queue,
-            bytes: &[u8],
-            label: &str,
-        ) -> Result<Self, Box<dyn Error>> {
-            let img = image::load_from_memory(bytes)?;
-            Self::from_image(device, queue, &img, Some(label))
-        }
-
-        pub fn from_image(
-            device: &wgpu::Device,
-            queue: &wgpu::Queue,
-            img: &image::DynamicImage,
-            label: Option<&str>,
-        ) -> Result<Self, Box<dyn Error>> {
-            let rgba = img.to_rgba8();
-            let dimensions = img.dimensions();
-
-            let size = wgpu::Extent3d {
-                width: dimensions.0,
-                height: dimensions.1,
-                depth_or_array_layers: 1,
-            };
-            let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label,
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: TextureFormat::Rgba8UnormSrgb,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                view_formats: &[],
-            });
-
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo {
-                    aspect: wgpu::TextureAspect::All,
-                    texture: &texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                },
-                &rgba,
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(4 * dimensions.0),
-                    rows_per_image: Some(dimensions.1),
-                },
-                size,
-            );
-
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Nearest,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                ..Default::default()
-            });
-
-            Ok(Self {
-                texture,
-                view,
-                sampler,
-            })
-        }
-
-        pub const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float; // 1.
-
-        pub fn create_depth_texture(device: &wgpu::Device, size: &UVec2, label: &str) -> Self {
-            let size = wgpu::Extent3d {
-                // 2.
-                width: size.x.max(1),
-                height: size.y.max(1),
-                depth_or_array_layers: 1,
-            };
-            let desc = wgpu::TextureDescriptor {
-                label: Some(label),
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: Self::DEPTH_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            };
-            let texture = device.create_texture(&desc);
-
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                // 4.
-                address_mode_u: wgpu::AddressMode::ClampToEdge,
-                address_mode_v: wgpu::AddressMode::ClampToEdge,
-                address_mode_w: wgpu::AddressMode::ClampToEdge,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                compare: Some(wgpu::CompareFunction::LessEqual), // 5.
-                lod_min_clamp: 0.0,
-                lod_max_clamp: 100.0,
-                ..Default::default()
-            });
-
-            Self {
-                texture,
-                view,
-                sampler,
-            }
-        }
-
-        /// Outputs a linear color texture instead of an srgb color texture. Should replace.
-        pub fn create_texture_linear_color(
-            device: &wgpu::Device,
-            size: &UVec2,
-            label: &str,
-        ) -> Self {
-            let size = wgpu::Extent3d {
-                // 2.
-                width: size.x.max(1),
-                height: size.y.max(1),
-                depth_or_array_layers: 1,
-            };
-            let desc = wgpu::TextureDescriptor {
-                label: Some(label),
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: TextureFormat::Bgra8Unorm,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                    | wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
-            };
-            let texture = device.create_texture(&desc);
-
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                // 4.
-                address_mode_u: wgpu::AddressMode::MirrorRepeat,
-                address_mode_v: wgpu::AddressMode::MirrorRepeat,
-                address_mode_w: wgpu::AddressMode::MirrorRepeat,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                lod_min_clamp: 0.0,
-                lod_max_clamp: 100.0,
-                ..Default::default()
-            });
-
-            Self {
-                texture,
-                view,
-                sampler,
-            }
-        }
-
-        pub fn create_texture(device: &wgpu::Device, size: &UVec2, label: &str) -> Self {
-            let size = wgpu::Extent3d {
-                // 2.
-                width: size.x.max(1),
-                height: size.y.max(1),
-                depth_or_array_layers: 1,
-            };
-            let desc = wgpu::TextureDescriptor {
-                label: Some(label),
-                size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: TextureFormat::Bgra8UnormSrgb,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT // 3.
-                    | wgpu::TextureUsages::TEXTURE_BINDING
-                    | wgpu::TextureUsages::COPY_SRC,
-                view_formats: &[TextureFormat::Bgra8Unorm, TextureFormat::Bgra8UnormSrgb],
-            };
-            let texture = device.create_texture(&desc);
-
-            let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-            let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-                // 4.
-                address_mode_u: wgpu::AddressMode::MirrorRepeat,
-                address_mode_v: wgpu::AddressMode::MirrorRepeat,
-                address_mode_w: wgpu::AddressMode::MirrorRepeat,
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::FilterMode::Nearest,
-                lod_min_clamp: 0.0,
-                lod_max_clamp: 100.0,
-                ..Default::default()
-            });
-
-            Self {
-                texture,
-                view,
-                sampler,
-            }
         }
     }
 }

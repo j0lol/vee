@@ -1,0 +1,18 @@
+[package]
+name = "vee_parse"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+exclude.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords = ["parser", "decompilation", "mii", "vfl", "save"]
+categories = ["parser-implementations"]
+description = "Parsing Mii save structures. Part of `vfl`."
+
+[dependencies]
+binrw = "0.15.0"
+
+[lints]
+workspace = true

@@ -19,7 +19,7 @@ var t_diffuse: texture_2d<f32>;
 var s_diffuse: sampler;
 
 struct VertexInput {
-    @location(0) position: vec3<f32>,
+    @location(0) position: vec4<f32>,
     @location(1) tex_coords: vec2<f32>,
     @location(2) normal: vec3<f32>,
 }
@@ -39,7 +39,7 @@ fn vs_main(
     var out: VertexOutput;
     out.tex_coords = model.tex_coords;
     out.world_normal = model.normal;
-    var world_position: vec4<f32> = vec4<f32>((char_shape.scale * model.position) + char_shape.position, 1.0);
+    var world_position: vec4<f32> = vec4<f32>((char_shape.scale * model.position.xyz) + char_shape.position, 1.0);
     out.world_position = world_position.xyz;
     out.clip_position = camera.view_proj * world_position;
     return out;

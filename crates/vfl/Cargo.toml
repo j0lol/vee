@@ -1,39 +1,30 @@
 [package]
 name = "vfl"
-version = "0.0.1"
-edition = "2024"
-authors = ["Jo Null <me@j0.lol>"]
-exclude = ["*.png", "*.glb", "*.dat"]
-license = "MIT OR Apache-2.0"
-keywords = ["rendering", "decompilation"]
-categories = ["rendering"]
-repository = "https://github.com/j0lol/vee"
-readme = "../../README.md"
-description = "Mii parsing and rendering research library"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+exclude.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords = ["rendering", "decompilation", "mii", "model", "parsing"]
+categories = ["rendering::engine", "rendering::data-formats", "parser-implementations"]
+description = "Mii parsing and rendering research library."
+
+# docs.rs-specific configuration
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
-binrw = "0.15.0"
-bytemuck = "1.23.0"
-half = "2.6.0"
-num_enum = "0.7.3"
-
-# feat: res
-image = { version = "0.25.6", optional = true }
-flate2 = { version = "1.1.1", features = ["rust_backend"], optional = true }
-
-# feat: draw
-glam = { version = "0.30.3", features = ["mint"], optional = true }
-mint = { version = "0.5.9", optional = true }
-nalgebra = { version = "0.33.2", features = ["mint"], optional = true }
-tegra_swizzle = { version = "0.4.0", optional = true }
-texture2ddecoder = { version = "0.1.2", optional = true }
-
-# feat: gltf
-mesh-tools = { version = "0.2.0", optional = true }
-
-[dev-dependencies]
+vee_parse = { path = "../vee_parse" }
+vee_resources = { path = "../vee_resources", optional = true }
+vee_models = { path = "../vee_models", optional = true }
+vee_wgpu = { path = "../vee_wgpu", optional = true }
 
 [features]
-res = ["dep:image", "dep:tegra_swizzle", "dep:flate2"]
-draw = ["res", "dep:texture2ddecoder", "dep:glam", "dep:mint", "dep:nalgebra"]
-gltf = ["res", "dep:mesh-tools"]
+res = ["dep:vee_resources", "dep:vee_models"]
+wgpu = ["res", "dep:vee_wgpu"]
+#gltf = ["res", "dep:mesh-tools"]
+
+[lints]
+workspace = true

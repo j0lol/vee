@@ -1,3 +1,6 @@
+//! Contains the color tables for Cafe and Nx. Also implements modulation for Nx, (not Cafe yet!)
+//! Expect modulation to become generic in the future.
+
 type Color = [f32; 4];
 
 pub mod cafe {
@@ -75,12 +78,14 @@ pub mod nx {
     #![allow(clippy::unreadable_literal, clippy::excessive_precision)]
 
     use num_enum::IntoPrimitive;
-
-    use crate::charinfo::nx::NxCharInfo;
+    use vee_parse::NxCharInfo;
 
     use super::Color;
 
+    /// 'Parts' that can be modulated. This is basically every type of texture or shape,
+    /// though single-color shapes are not included (because they are trivial.)
     #[derive(Copy, Clone, Debug)]
+    #[non_exhaustive]
     pub enum ColorModulated {
         Eye,
         Eyebrow,
@@ -98,8 +103,11 @@ pub mod nx {
     pub const NON_MODULATION: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
     const WHITE: Color = linear::COMMON_COLOR[99];
     const BLACK: Color = linear::COMMON_COLOR[8];
-    const TRANSPARENT: Color = [0.0, 0.0, 0.0, 0.0];
+    // const TRANSPARENT: Color = [0.0, 0.0, 0.0, 0.0];
 
+    /// Different ways a texture can be modulated.
+    /// For each of these, the texture will be expected to have a certain format.
+    /// The consumer using this API is expected to ensure this.
     #[repr(u8)]
     #[derive(IntoPrimitive, Debug, Clone, Copy)]
     pub enum ModulationMode {
@@ -109,6 +117,8 @@ pub mod nx {
         AlphaTexture = 3,
         LuminanceAlphaTexture = 4,
     }
+
+    /// An intent that this texture will be modulated in the described way in a GPU shader.
     #[derive(Debug, Clone, Copy)]
     pub struct ModulationIntent {
         pub mode: ModulationMode,
@@ -119,7 +129,7 @@ pub mod nx {
     /// This function will give you color modulations for each needed texture or shape.
     /// When a channel is not modulated, it will return [NaN, NaN, NaN, NaN]
     ///
-    /// EG: An "R" format texture does not need G&B modulation
+    /// e.g: An "R" format texture does not need G&B modulation
     ///
     #[allow(clippy::must_use_candidate)]
     pub fn modulate(class: ColorModulated, char: &NxCharInfo) -> ModulationIntent {
@@ -130,13 +140,13 @@ pub mod nx {
                 channels: [
                     BLACK,
                     WHITE,
-                    linear::COMMON_COLOR[usize::from(char.eye_color)],
+                    linear::COMMON_COLOR[usize::from(char.eye_color.0)],
                 ],
             },
             ColorModulated::Eyebrow => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.eyebrow_color)],
+                    linear::COMMON_COLOR[usize::from(char.eyebrow_color.0)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -144,15 +154,15 @@ pub mod nx {
             ColorModulated::Mouth => ModulationIntent {
                 mode: M::LayeredRgbTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.mouth_color)],
-                    linear::UPPER_LIP_COLOR[usize::from(char.mouth_color)],
+                    linear::COMMON_COLOR[usize::from(char.mouth_color.0)],
+                    linear::UPPER_LIP_COLOR[usize::from(char.mouth_color.0)],
                     WHITE,
                 ],
             },
             ColorModulated::Glass => ModulationIntent {
                 mode: M::LuminanceAlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.glass_color)],
+                    linear::COMMON_COLOR[usize::from(char.glass_color.0)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -164,7 +174,7 @@ pub mod nx {
             ColorModulated::FacelineBeard => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.beard_color)],
+                    linear::COMMON_COLOR[usize::from(char.beard_color.0)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -172,7 +182,7 @@ pub mod nx {
             ColorModulated::FacelineWrinkle => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.faceline_color)],
+                    linear::COMMON_COLOR[usize::from(char.faceline_color.0)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -188,7 +198,7 @@ pub mod nx {
             ColorModulated::Mustache => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.beard_color)],
+                    linear::COMMON_COLOR[usize::from(char.beard_color.0)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -197,7 +207,7 @@ pub mod nx {
             ColorModulated::Cap => ModulationIntent {
                 mode: M::LuminanceAlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.favorite_color)],
+                    linear::COMMON_COLOR[usize::from(char.favorite_color.0)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],

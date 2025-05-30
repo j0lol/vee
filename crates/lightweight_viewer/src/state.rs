@@ -5,16 +5,16 @@ use nest_struct::nest_struct;
 use std::rc::Rc;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
-use vee_wgpu::draw::CharModel;
-use vee_wgpu::texture::TextureBundle;
-use vee_wgpu::ProgramState;
-use vfl::res::shape::nx::ResourceShape;
-use vfl::res::tex::nx::ResourceTexture;
+use vfl::impl_wgpu::draw::CharModel;
+use vfl::impl_wgpu::texture::TextureBundle;
+use vfl::impl_wgpu::ProgramState;
+use vfl::res::shape::ResourceShape;
+use vfl::res::tex::ResourceTexture;
 use vfl::{
-    charinfo::nx::{BinRead, NxCharInfo},
-    res::{shape::nx::SHAPE_MID_DAT, tex::nx::TEXTURE_MID_SRGB_DAT},
+    parse::{BinRead, NxCharInfo},
+    res::{shape::SHAPE_MID_DAT, tex::TEXTURE_MID_SRGB_DAT},
 };
-use wgpu::{util::DeviceExt, Backends};
+use wgpu::{util::DeviceExt, Backends, Features};
 use winit::window::Window;
 
 /// Yeah, yeah.
@@ -45,7 +45,7 @@ pub fn char_model() -> MutexGuard<'static, CharModel> {
 /// We put our own stuff in here too (camera, resource data, etc.)
 ///
 /// Nested struct definitions requires a macro...
-/// - See: https://github.com/rust-lang/rfcs/pull/2584
+/// - See: <https://github.com/rust-lang/rfcs/pull/2584>
 ///
 /// There are a few macros that implement this, I might swap it later
 /// - See: {`nest_struct`, `structstruck`, `nestify`}
@@ -86,7 +86,10 @@ impl State {
             .await
             .unwrap();
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
+            .request_device(&wgpu::DeviceDescriptor {
+                required_features: Features::SHADER_F16,
+                ..Default::default()
+            })
             .await
             .unwrap();
 

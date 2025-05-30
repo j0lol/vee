@@ -1,6 +1,6 @@
-use crate::charinfo::nx::NxCharInfo;
-
-use super::{TEX_SCALE_X, TEX_SCALE_Y};
+//! Positioning (transforming) textures before they become models. Only the mask needs this operation.
+use crate::{TEX_SCALE_X, TEX_SCALE_Y};
+use vee_parse::NxCharInfo;
 
 const fn tex_scale2dim(scale: f32) -> f32 {
     1.0 + 0.4 * scale
@@ -35,8 +35,6 @@ const TEX_MUSTACHE_BASE_H: f32 = tex_unit(576.0);
 
 const TEX_MOLE_BASE_X: f32 = 17.766_165;
 const TEX_MOLE_BASE_Y: f32 = 17.95986;
-const TEX_MOLE_BASE_W: f32 = tex_unit(0.0);
-const TEX_MOLE_BASE_H: f32 = tex_unit(0.0);
 
 // FFLiCharInfo fn FFLiiGetEyeRotateOffset
 const fn eye_rot_offset(i: usize) -> u8 {
@@ -49,7 +47,7 @@ const fn eye_rot_offset(i: usize) -> u8 {
     32 - OFFSETS[i]
 }
 
-// todo use above
+// TODO: impl above
 const EYEBROW_ROT_OFFSET: [u8; 24] = [
     26, 26, 27, 25, 26, 25, 26, 25, 28, 25, 26, 24, 27, 27, 26, 26, 25, 25, 26, 26, 27, 26, 25, 27,
 ];
@@ -57,6 +55,7 @@ const EYEBROW_ROT_OFFSET: [u8; 24] = [
 // Found in RFL, no idea what it is
 const RFL_MAGIC_Y_OFFSET: f32 = 1.160_000_1;
 
+/// The 'anchor point' of the image, or where the origin (0,0) is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ImageOrigin {
     Center,
@@ -65,8 +64,9 @@ pub enum ImageOrigin {
     Ignore,
 }
 
+/// Positional data of a part of the face, e.g. eye.
 #[derive(Clone, Copy, Debug)]
-pub struct FacePart {
+pub struct MaskFacePart {
     pub x: f32,
     pub y: f32,
     pub width: f32,
@@ -78,11 +78,11 @@ pub struct FacePart {
 /// The positioning of all parts of the face on the mask.
 #[derive(Clone, Copy, Debug)]
 pub struct MaskFaceParts {
-    pub eye: [FacePart; 2],
-    pub eyebrow: [FacePart; 2],
-    pub mouth: FacePart,
-    pub mustache: [FacePart; 2],
-    pub mole: FacePart,
+    pub eye: [MaskFacePart; 2],
+    pub eyebrow: [MaskFacePart; 2],
+    pub mouth: MaskFacePart,
+    pub mustache: [MaskFacePart; 2],
+    pub mole: MaskFacePart,
 }
 
 impl MaskFaceParts {
@@ -101,7 +101,7 @@ impl MaskFaceParts {
             info.eye_rotate + eye_rot_offset(info.eye_type as usize),
         ));
 
-        let eye_l = FacePart {
+        let eye_l = MaskFacePart {
             x: base_scale * (32.0 + eye_spacing_x),
             y: eye_y * base_scale,
             width: eye_w * base_scale,
@@ -109,7 +109,7 @@ impl MaskFaceParts {
             angle_deg: 360.0 - eye_a,
             origin: ImageOrigin::Left,
         };
-        let eye_r = FacePart {
+        let eye_r = MaskFacePart {
             x: base_scale * (32.0 - eye_spacing_x),
             y: eye_y * base_scale,
             width: eye_w * base_scale,
@@ -129,7 +129,7 @@ impl MaskFaceParts {
         let eb_a = tex_rotate2ang(
             (info.eyebrow_rotate + EYEBROW_ROT_OFFSET[info.eyebrow_type as usize]).into(),
         );
-        let eb_l = FacePart {
+        let eb_l = MaskFacePart {
             x: base_scale * (32.0 + eb_spacing_x),
             y: eb_y * base_scale,
             width: eb_w * base_scale,
@@ -137,7 +137,7 @@ impl MaskFaceParts {
             angle_deg: 360.0 - eb_a,
             origin: ImageOrigin::Left,
         };
-        let eb_r = FacePart {
+        let eb_r = MaskFacePart {
             x: base_scale * (32.0 - eb_spacing_x),
             y: eb_y * base_scale,
             width: eb_w * base_scale,
@@ -152,7 +152,7 @@ impl MaskFaceParts {
         let mouth_w = TEX_MOUTH_BASE_W * mouth_base_scale;
         let mouth_h = TEX_MOUTH_BASE_H * mouth_base_scale * mouth_base_scale_y;
 
-        let mouth = FacePart {
+        let mouth = MaskFacePart {
             x: base_scale * 32.0,
             y: mouth_y * base_scale,
             width: mouth_w * base_scale,
@@ -166,7 +166,7 @@ impl MaskFaceParts {
         let mus_w = TEX_MUSTACHE_BASE_W * tex_scale2dim(info.mustache_scale.into());
         let mus_h = TEX_MUSTACHE_BASE_H * tex_scale2dim(info.mustache_scale.into());
 
-        let mus_l = FacePart {
+        let mus_l = MaskFacePart {
             x: base_scale * 32.0,
             y: mus_y * base_scale,
             width: mus_w * base_scale,
@@ -174,7 +174,7 @@ impl MaskFaceParts {
             angle_deg: 0.0,
             origin: ImageOrigin::Left,
         };
-        let mus_r = FacePart {
+        let mus_r = MaskFacePart {
             x: base_scale * 32.0,
             y: mus_y * base_scale,
             width: mus_w * base_scale,
@@ -188,7 +188,7 @@ impl MaskFaceParts {
         let mole_w = tex_scale2dim(info.mole_scale.into());
         let mole_h = tex_scale2dim(info.mole_scale.into());
 
-        let mole = FacePart {
+        let mole = MaskFacePart {
             x: mole_x * base_scale,
             y: mole_y * base_scale,
             width: mole_w * base_scale,

@@ -1,79 +1,82 @@
-use crate::utils::{Vec3PackedSnorm, inflate_bytes, u16_to_f32};
+//! Parsing mesh data
+use crate::inflate_bytes;
+use crate::packing::{Float16, Vec3PackedSnorm};
 use binrw::{BinRead, Endian};
 use std::{
     error::Error,
     io::{Cursor, Read, Seek, SeekFrom},
 };
 
+/// For internal use...
 pub const SHAPE_MID_DAT: &str =
     concat!(env!("CARGO_WORKSPACE_DIR"), "/resources_here/ShapeMid.dat");
-#[cfg(target_family = "wasm")]
-pub const SHAPE_MID_DAT_LOADED: &[u8] = include_bytes!("../../../ShapeMid.dat");
 
-#[cfg(feature = "gltf")]
-use mesh_tools::GltfBuilder;
+// #[cfg(feature = "gltf")]
+// use mesh_tools::GltfBuilder;
 
 enum AttributeType {
-    /// Vertex positions. Format: `AttributeFormat_16_16_16_16_Float`
     Position = 0, // `AttributeFormat_16_16_16_16_Float`
-    Normal = 1,  // `AttributeFormat_10_10_10_2_Snorm`
-    Uv = 2,      // `AttributeFormat_16_16_Float`
-    Tangent = 3, // `AttributeFormat_8_8_8_8_Snorm`
-    Param = 4,   // `AttributeFormat_8_8_8_8_Unorm`
+    Normal = 1,   // `AttributeFormat_10_10_10_2_Snorm`
+    Uv = 2,       // `AttributeFormat_16_16_Float`
+    Tangent = 3,  // `AttributeFormat_8_8_8_8_Snorm`
+    Param = 4,    // `AttributeFormat_8_8_8_8_Unorm`
 }
 
+/// Mesh of a shape, fresh from the resource file.
+/// Gets turned into a `vee_models::GenericModel3D` and paired with a texture.
 #[derive(Debug, Clone)]
-pub struct ShapeData {
-    pub positions: Vec<[f32; 3]>,
+pub struct ShapeMesh {
+    pub positions: Vec<[Float16; 4]>,
     pub indices: Vec<u16>,
-    pub normals: Option<Vec<[f32; 3]>>,
-    pub uvs: Option<Vec<[f32; 2]>>,
+    pub normals: Option<Vec<Vec3PackedSnorm>>,
+    pub uvs: Option<Vec<[Float16; 2]>>,
     pub color_params: Option<Vec<u8>>,
 }
-impl ShapeData {
-    #[cfg(feature = "gltf")]
-    fn gltf(&self, _bounding_box: [[f32; 3]; 2]) -> GltfBuilder {
-        let mut builder = GltfBuilder::new();
+// TODO: add gltf?
+// impl ShapeData {
+//     #[cfg(feature = "gltf")]
+//     fn gltf(&self, _bounding_box: [[f32; 3]; 2]) -> GltfBuilder {
+//         let mut builder = GltfBuilder::new();
+//
+//         let ShapeData {
+//             positions,
+//             indices,
+//             normals: _,
+//             uvs: _,
+//             color_params: _,
+//         } = self;
+//
+//         let material = builder.create_basic_material(
+//             Some("Hair texture".to_string()),
+//             [0.118, 0.102, 0.094, 1.000],
+//         );
+//
+//         let mesh = builder.create_simple_mesh(
+//             Some("Mii Shape".to_string()),
+//             positions.as_flattened(),
+//             indices,
+//             // normals.clone().map(|v| v.into_flattened()).as_deref(),
+//             // uvs.clone().map(|v| v.into_flattened()).as_deref(),
+//             None,
+//             None,
+//             Some(material),
+//         );
+//
+//         let mii_shape_node = builder.add_node(
+//             Some("Mii Node".to_string()),
+//             Some(mesh),
+//             Some([0.0, 0.0, 0.0]),
+//             None,
+//             None,
+//         );
+//
+//         builder.add_scene(Some("Mii Scene".to_string()), Some(vec![mii_shape_node]));
+//
+//         builder
+//     }
+// }
 
-        let ShapeData {
-            positions,
-            indices,
-            normals: _,
-            uvs: _,
-            color_params: _,
-        } = self;
-
-        let material = builder.create_basic_material(
-            Some("Hair texture".to_string()),
-            [0.118, 0.102, 0.094, 1.000],
-        );
-
-        let mesh = builder.create_simple_mesh(
-            Some("Mii Shape".to_string()),
-            positions.as_flattened(),
-            indices,
-            // normals.clone().map(|v| v.into_flattened()).as_deref(),
-            // uvs.clone().map(|v| v.into_flattened()).as_deref(),
-            None,
-            None,
-            Some(material),
-        );
-
-        let mii_shape_node = builder.add_node(
-            Some("Mii Node".to_string()),
-            Some(mesh),
-            Some([0.0, 0.0, 0.0]),
-            None,
-            None,
-        );
-
-        builder.add_scene(Some("Mii Scene".to_string()), Some(vec![mii_shape_node]));
-
-        builder
-    }
-}
-
-impl BinRead for ShapeData {
+impl BinRead for ShapeMesh {
     type Args<'a> = ResourceShapeAttribute;
 
     fn read_options<R: Read + Seek>(
@@ -97,13 +100,14 @@ impl BinRead for ShapeData {
         let mut positions = vec![];
         for _vertex in 0..vertex_count {
             positions.push({
-                let positions = <[u16; 3]>::read_options(reader, endian, ())?;
-                let _ = <u16>::read_options(reader, endian, ())?;
+                let positions = <[Float16; 4]>::read_options(reader, endian, ())?;
+                // let _ = <u16>::read_options(reader, endian, ())?;
 
                 // Skip 2 bytes for padding
                 // let _ = reader.take(2);
 
-                positions.map(u16_to_f32)
+                positions
+                // positions.map(f16::from_bits)
             });
         }
 
@@ -126,8 +130,8 @@ impl BinRead for ShapeData {
 
             let mut normals = vec![];
             for _vertex in 0..vertex_count {
-                let packed = <u32>::read_options(reader, endian, ())?;
-                normals.push(Vec3PackedSnorm(packed).unpack());
+                let packed = <Vec3PackedSnorm>::read_options(reader, endian, ())?;
+                normals.push(packed);
             }
 
             Some(normals)
@@ -143,7 +147,7 @@ impl BinRead for ShapeData {
 
             let mut uvs = vec![];
             for _vertex in 0..vertex_count {
-                uvs.push(<[u16; 2]>::read_options(reader, endian, ())?.map(u16_to_f32));
+                uvs.push(<[Float16; 2]>::read_options(reader, endian, ())?);
             }
 
             Some(uvs)
@@ -175,7 +179,7 @@ impl BinRead for ShapeData {
 
         // reader.seek(SeekFrom::Start(saved_position))?;
 
-        Ok(ShapeData {
+        Ok(ShapeMesh {
             positions,
             indices,
             normals,
@@ -184,6 +188,9 @@ impl BinRead for ShapeData {
         })
     }
 }
+
+/// Specifies where data is, now big it is, and how compressed it is.
+/// Used for both textures and shapes.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceCommonAttribute {
     pub offset: u32,
@@ -193,6 +200,8 @@ pub struct ResourceCommonAttribute {
     pub memory_level: u8,
     pad: u16,
 }
+
+/// Specifies where {vertex,index} buffers are, and how big they are.
 #[derive(BinRead, Default, Debug, Clone, Copy)]
 pub struct ResourceShapeAttribute {
     pub attr_offset: [u32; 5],
@@ -208,6 +217,8 @@ impl ResourceShapeAttribute {
     }
 }
 
+/// All the data required to read a mesh from the shape file.
+/// Essentially a 'pointer' to the data.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ShapeElement {
     pub common: ResourceCommonAttribute,
@@ -215,12 +226,13 @@ pub struct ShapeElement {
 }
 
 impl ShapeElement {
+    /// Reads a mesh from the data in `ShapeElement`
     /// # Errors
     /// Can error if:
     /// - Shape data is in a malformed zlib format
     /// - Writing out shape data file errors
-    /// - Parsing vertices and etc from data fails
-    pub fn shape_data(&mut self, file: &[u8]) -> Result<ShapeData, Box<dyn Error>> {
+    /// - Parsing vertices etc. from data fails
+    pub fn mesh(&mut self, file: &[u8]) -> Result<ShapeMesh, Box<dyn Error>> {
         // exporter set boundingbox
 
         // println!("shapeload");
@@ -236,7 +248,7 @@ impl ShapeElement {
         // }
 
         let data =
-            ShapeData::read_options(&mut Cursor::new(shape_data), Endian::Little, self.shape)?;
+            ShapeMesh::read_options(&mut Cursor::new(shape_data), Endian::Little, self.shape)?;
 
         Ok(data)
     }
@@ -246,12 +258,14 @@ impl ShapeElement {
     /// - Shape data cannot be parsed
     #[cfg(feature = "gltf")]
     pub fn gltf(&mut self, file: &[u8]) -> Result<GltfBuilder, Box<dyn Error>> {
-        let data = self.shape_data(file)?;
+        let data = self.mesh(file)?;
 
         Ok(data.gltf(self.shape.bounding_box))
     }
 }
 
+/// Contains positional data for any headwear that
+/// may be placed on the `CharModel` post-render.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceShapeHairTransform {
     front_translate: [f32; 3],
@@ -262,6 +276,8 @@ pub struct ResourceShapeHairTransform {
     top_rotate: [f32; 3],
 }
 
+/// Contains positional data used to move face parts
+/// like the beard, nose, hair, glasses, etc.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceShapeFacelineTransform {
     pub hair_translate: [f32; 3],
@@ -269,6 +285,7 @@ pub struct ResourceShapeFacelineTransform {
     pub beard_translate: [f32; 3],
 }
 
+/// Every type of shape mesh stored in the resource data.
 #[derive(Clone, Copy, Debug)]
 pub enum Shape {
     Beard,
@@ -286,6 +303,8 @@ pub enum Shape {
     HairTransform,
     FaceLineTransform,
 }
+
+/// Generic 'pointer' in the resource data.
 #[derive(Clone, Copy)]
 pub enum GenericResourceShape {
     Element(ShapeElement),
@@ -293,6 +312,7 @@ pub enum GenericResourceShape {
     FaceLineTransform(ResourceShapeFacelineTransform),
 }
 
+/// Header of the `Shape` resource file. Contains model data for `CharModel`s.
 #[derive(BinRead, Debug, Clone, Copy)]
 #[br(little, magic = b"NFSR")]
 pub struct ResourceShape {

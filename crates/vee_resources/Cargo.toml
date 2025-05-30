@@ -1,0 +1,26 @@
+[package]
+name = "vee_resources"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+exclude.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords = ["mesh", "texture", "decompilation", "mii", "vfl"]
+categories = ["parser-implementations", "rendering::data-formats", "multimedia::images"]
+description = "Parsing Mii mesh and texture files. Part of `vfl`."
+
+[dependencies]
+half = "2.6.0"
+image = "0.25.6"
+num_enum = "0.7.3"
+vee_parse = { path = "../vee_parse" }
+tegra_swizzle = { version = "0.4.0" }
+texture2ddecoder = { version = "0.1.2" }
+binrw = "0.15.0"
+flate2 = { version = "1.1.1", features = ["rust_backend"] }
+bytemuck = { version = "1.23.0", features = ["derive"] }
+
+[lints]
+workspace = true

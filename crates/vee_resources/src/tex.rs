@@ -1,16 +1,20 @@
-use crate::{res::shape::nx::ResourceCommonAttribute, utils::inflate_bytes};
+//! Parsing texture data
+
+use crate::inflate_bytes;
+use crate::shape::ResourceCommonAttribute;
 use binrw::BinRead;
-use image::ExtendedColorType::Bgra8;
-use image::{ExtendedColorType, ImageBuffer, Rgba, RgbaImage};
+use image::{ImageBuffer, Rgba, RgbaImage};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::error::Error;
 use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
+/// For internal use...
 pub const TEXTURE_MID_SRGB_DAT: &str = concat!(
     env!("CARGO_WORKSPACE_DIR"),
     "/resources_here/NXTextureMidSRGB.dat"
 );
 
+/// Specifies information about the texture.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceTextureAttribute {
     alignment: u32,
@@ -22,6 +26,8 @@ pub struct ResourceTextureAttribute {
     pad: [u8; 1],
 }
 
+/// All the data required to read a texture from the shape file.
+/// Essentially a 'pointer' to the data.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct TextureElement {
     pub common: ResourceCommonAttribute,
@@ -31,12 +37,18 @@ pub struct TextureElement {
 // Format rundown:
 // https://www.reedbeta.com/blog/understanding-bcn-texture-compression-formats/#comparison-table
 
+/// Defines what format a texture is in.
+/// - `R`, `Rg`, `Rgba` are uncompressed formats.
+/// - `Bc4`, `Bc5`, `Bc7`, `Astc4x4` are compressed formats.
+///
+/// Normally, these are decompressed _on the GPU_, but CPU implementations are here for convenience.
+/// Especially, `Astc` is a poorly supported format on desktops, so a CPU "polyfill" is required.
 #[derive(IntoPrimitive, TryFromPrimitive, Debug, Clone, Copy, BinRead)]
 #[br(repr = u8)]
 #[repr(u8)]
 pub enum ResourceTextureFormat {
     R = 0,       // R8Unorm (Ffl Name)
-    Rb = 1,      // R8B8Unorm
+    Rg = 1,      // R8B8Unorm
     Rgba = 2,    // R8B8G8A8Unorm
     Bc4 = 3,     // Bc4Unorm (Compressed R)
     Bc5 = 4,     // Bc5Unorm (Compressed Rb)
@@ -45,11 +57,14 @@ pub enum ResourceTextureFormat {
 }
 
 impl TextureElement {
-    /// Gets the raw bytes of a texture. Takes an argument of the resource file.
+    /// Gets the raw bytes of a texture. Takes an argument of the texture resource file.
+    /// On Nx, the textures are pre-"swizzled" for cache locality reasons,
+    /// so they need to be de-swizzled.
+    ///
     /// # Errors
     /// - Encounters texture data that isn't Zlib deflated
     /// - Deswizzling texture data fails
-    pub fn get_texture_bytes(&self, file: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn get_texture_bytes(&self, texture_bytes: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
         use ResourceTextureFormat as Rtf;
 
         let start: usize = self.common.offset as usize;
@@ -57,18 +72,18 @@ impl TextureElement {
 
         let range = start..end;
 
-        let tex_data = inflate_bytes(&file[range])?;
+        let tex_data = inflate_bytes(&texture_bytes[range])?;
 
         let needs_swizzling = self.texture.tile_mode == 0;
 
         let tex_data = if needs_swizzling {
             let block_size = match self.texture.format {
-                Rtf::R | Rtf::Rb | Rtf::Rgba => 1,
+                Rtf::R | Rtf::Rg | Rtf::Rgba => 1,
                 Rtf::Bc4 | Rtf::Bc5 | Rtf::Bc7 | Rtf::Astc4x4 => 4,
             };
 
             let bytes_per_pixel = match self.texture.format {
-                Rtf::R | Rtf::Rb | Rtf::Rgba => 1,
+                Rtf::R | Rtf::Rg | Rtf::Rgba => 1,
                 Rtf::Bc4 => 8,
                 Rtf::Bc5 | Rtf::Bc7 | Rtf::Astc4x4 => 16,
             };
@@ -92,13 +107,14 @@ impl TextureElement {
     }
 
     /// Gets the raw bytes of a texture. Takes an argument of the resource file.
+    /// This function will decompress the image on the CPU.
+    ///
     /// # Errors
     /// - Encounters texture data that isn't Zlib deflated
     /// - Deswizzling texture data fails
     /// - Texture decompression fails
     /// # Panics
     /// - If texture data is empty
-    #[cfg(feature = "draw")]
     pub fn get_uncompressed_bytes(&self, file: &[u8]) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
         let normalize_textures = false;
 
@@ -188,7 +204,7 @@ impl TextureElement {
         Ok(Some(tex_data_decoded))
     }
 
-    /// Gets the raw bytes of a texture. Takes an argument of the resource file.
+    /// Creates an Image. Takes an argument of the resource file.
     /// # Errors
     /// - Encounters texture data that isn't Zlib deflated
     /// - Deswizzling texture data fails
@@ -196,7 +212,6 @@ impl TextureElement {
     /// # Panics
     /// - If texture data is empty
     /// - If calculated image container is too small
-    #[cfg(feature = "draw")]
     pub fn get_image(&self, bytes: &[u8]) -> Result<Option<RgbaImage>, Box<dyn Error>> {
         let bytes = match self.get_uncompressed_bytes(bytes) {
             Ok(Some(bytes)) => bytes,
@@ -221,6 +236,7 @@ impl TextureElement {
     }
 }
 
+/// Header of the `Texture` resource file. Contains texture data for `CharModel`s.
 #[derive(BinRead, Clone, Copy)]
 #[br(little, magic = b"NFTR")]
 pub struct ResourceTexture {

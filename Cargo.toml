@@ -3,11 +3,21 @@ resolver = "2"
 members = [
     # bevy viewer is on the backburner
     # "crates/bevy_viewer",
-    "crates/lightweight_viewer",
+    "crates/lightweight_viewer", "crates/vee_models",
+    "crates/vee_parse", "crates/vee_resources",
     "crates/vee_wgpu",
     "crates/vfl",
     "crates/vfl-cli",
 ]
 
-[workspace.dependencies]
-vfl = { path = "crates/vfl" }
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Jo Null <me@j0.lol>"]
+exclude = ["*.png", "*.glb", "*.dat"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/j0lol/vee"
+readme = "README.md"
+
+[workspace.lints.rustdoc]
+missing_docs = "warn"

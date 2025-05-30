@@ -2,8 +2,8 @@ use clap::{arg, Parser, Subcommand, ValueEnum};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
-use vfl::charinfo::nx::BinRead;
-use vfl::res::tex::nx::{ResourceTexture, TextureElement};
+use vfl::parse::BinRead;
+use vfl::res::tex::{ResourceTexture, TextureElement};
 
 // TODO: use real names
 // https://github.com/ariankordi/ffl/blob/97eecdf3688f92c4c95cecf5d6ab3e84c0ee42c0/tools/FFLResource.py#L448
@@ -63,7 +63,7 @@ fn main() {
             index,
             output,
         } => {
-            let res_tex = vfl::res::tex::nx::ResourceTexture::read(&mut BufReader::new(
+            let res_tex = ResourceTexture::read(&mut BufReader::new(
                 File::open(resource_file.clone()).unwrap(),
             ))
             .unwrap();

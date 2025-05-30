@@ -1,0 +1,22 @@
+[package]
+name = "vee_models"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+exclude.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords = ["model", "texture", "decompilation", "mii", "vfl"]
+categories = ["parser-implementations", "rendering::data-formats"]
+description = "Making Mii models. Part of `vfl`."
+
+[dependencies]
+vee_parse = { path = "../vee_parse" }
+vee_resources = { path = "../vee_resources" }
+image = "0.25.6"
+bytemuck = { version = "1.23.0", features = ["derive"] }
+glam = "0.30.3"
+
+[lints]
+workspace = true

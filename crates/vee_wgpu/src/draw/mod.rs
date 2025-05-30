@@ -1,6 +1,8 @@
+//! Drawing models and textures.
+
 use crate::draw::model::{beard, cap, face_line, forehead, glasses, hair, mask, nose, nose_line};
 use crate::{Model3d, ProgramState};
-use vfl::charinfo::nx::NxCharInfo;
+use vee_parse::NxCharInfo;
 use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) mod model;
@@ -9,7 +11,7 @@ pub(crate) mod texture;
 type Model = Model3d;
 type ModelOpt = Option<Model3d>;
 
-/// A bundle of models that in totality represent a character.
+/// A bundle of models that in totality represent a `Char`.
 #[derive(Debug)]
 pub struct CharModel {
     pub face_line: Model,

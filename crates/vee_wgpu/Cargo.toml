@@ -1,19 +1,33 @@
 [package]
 name = "vee_wgpu"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+exclude.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords = ["model", "wgpu", "decompilation", "mii", "vfl"]
+categories = ["rendering::engine"]
+description = "Rendering Miis with `wgpu`. Part of `vfl`."
 
 [dependencies]
 wgpu = "25"
-vfl = { path = "../vfl", features = ["draw", "res"] }
+#vfl = { path = "../vfl", features = ["draw", "res"] }
 bytemuck = "1.23.0"
 glam = "0.30.3"
 image = "0.25.6"
 pollster = "0.4.0"
 futures-intrusive = "0.5.0"
+vee_parse = { path = "../vee_parse" }
+vee_resources = { path = "../vee_resources" }
+vee_models = { path = "../vee_models" }
 
 [dev-dependencies]
-glam = { version = "0.30.3" , features = ["serde", "approx"]}
+glam = { version = "0.30.3", features = ["serde", "approx"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 approx = "0.5.1"
+
+[lints]
+workspace = true

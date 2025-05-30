@@ -1,11 +1,11 @@
 use crate::ProgramState;
 use image::DynamicImage;
-use vfl::charinfo::nx::NxCharInfo;
-use vfl::color::nx::ModulationIntent;
-use vfl::color::nx::{modulate, ColorModulated};
-use vfl::draw::mesh_building::mask_texture_meshes;
-use vfl::draw::DrawableTexture;
-use vfl::res::tex::nx::TextureElement;
+use vee_models::building::mask_texture_meshes;
+use vee_models::model::DrawableTexture;
+use vee_parse::NxCharInfo;
+use vee_resources::color;
+use vee_resources::color::nx::{modulate, ColorModulated, ModulationIntent};
+use vee_resources::tex::TextureElement;
 use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) fn draw_noseline(
@@ -131,9 +131,8 @@ pub(crate) fn draw_faceline(
     for (i, (rendered_texture, modulation)) in textures.into_iter().enumerate() {
         // Check if we are the first to be rendered out, then add an opaque background.
         // We don't want an opaque redraw happening over our other faceline textures.
-        let opaque = (i == 0).then_some(
-            vfl::color::nx::linear::FACELINE_COLOR[usize::from(char_info.faceline_color)],
-        );
+        let opaque = (i == 0)
+            .then_some(color::nx::linear::FACELINE_COLOR[usize::from(char_info.faceline_color.0)]);
 
         st.draw_texture(
             DrawableTexture {

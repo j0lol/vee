@@ -18,6 +18,16 @@ Not currently targeted:
 - Nitro (NTR)
 - Any other target (Miitomo, Mii Studio, etc.)
 
+## Libraries
+
+This project currently has the libraries:
+
+- `vfl` (Parent library)
+- `vee_parse`
+- `vee_resources`
+- `vee_models`
+- `vee_wgpu`
+
 ## Binaries
 
 This project currently has three binaries:

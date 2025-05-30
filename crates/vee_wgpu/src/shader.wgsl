@@ -18,17 +18,14 @@ struct VertexOutput {
 
 @vertex
 fn vs_main(
-    @location(0) position: vec3<f32>,
+    @location(0) position: vec4<f32>,
     @location(1) tex_coords: vec2<f32>
 ) -> VertexOutput {
     var out: VertexOutput;
     out.tex_coords = tex_coords;
-    // if mvp.modulation_mode == 1 {
-    //     // Ignore matrix with direct texture output.
-    //     out.clip_position = vec4<f32>(position, 1.0);
-    // } else {
-        out.clip_position = mvp.mtx * vec4<f32>(position, 1.0);
-    // }
+
+    out.clip_position = mvp.mtx * vec4<f32>(position.xyz, 1.0);
+
     return out;
 }
 

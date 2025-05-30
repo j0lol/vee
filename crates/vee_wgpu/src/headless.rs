@@ -1,21 +1,26 @@
-use crate::{texture::TextureBundle, ProgramState};
+//! Constructs for rendering without a surface (headlessly) i.e. on a server.
+
+use crate::texture::TextureBundle;
+use crate::ProgramState;
 use camera::{Camera, CameraUniform};
 use glam::{uvec2, UVec2, Vec3};
 use image::{DynamicImage, RgbaImage};
 use std::f32::consts::FRAC_PI_2;
 use std::fs::File;
 use std::rc::Rc;
-use vfl::charinfo::nx::BinRead;
-use vfl::res::shape::nx::ResourceShape;
-use vfl::res::tex::nx::ResourceTexture;
+use vee_parse::BinRead;
+use vee_resources::shape::ResourceShape;
+use vee_resources::tex::ResourceTexture;
 use wgpu::{util::DeviceExt, CommandEncoder, DeviceDescriptor};
 
-pub struct ResourceData {
+pub(crate) struct ResourceData {
     pub(crate) texture_header: ResourceTexture,
     pub(crate) shape_header: ResourceShape,
     pub(crate) texture_data: Rc<Vec<u8>>,
     pub(crate) shape_data: Rc<Vec<u8>>,
 }
+
+/// Contains all the state required for rendering headlessly.
 pub struct HeadlessRenderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -69,6 +74,8 @@ impl ProgramState for HeadlessRenderer {
 }
 
 impl HeadlessRenderer {
+    /// Instantiate a `HeadlessRenderer`.
+    /// Requires the shape file and texture file paths.
     pub fn new(shape_file: &str, texture_file: &str) -> HeadlessRenderer {
         pollster::block_on(HeadlessRenderer::async_new(shape_file, texture_file))
     }
@@ -163,6 +170,8 @@ impl HeadlessRenderer {
         }
     }
 
+    /// After rendering, this function will consume the encoder and output commands to the GPU.
+    /// Requires a `TextureBundle` to render to.
     #[allow(unused)]
     pub fn output_texture(
         &mut self,

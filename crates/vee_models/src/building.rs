@@ -1,15 +1,16 @@
-use super::positioning::{FacePart, ImageOrigin, MaskFaceParts};
-use super::render_2d::Model2d;
-use super::{Vertex, TEX_SCALE_X, TEX_SCALE_Y};
-use crate::{
-    charinfo::nx::NxCharInfo,
-    color::nx::{modulate, ColorModulated},
-    res::tex::nx::{ResourceTexture, TextureElement},
-};
+//! Building models. Only the mask needs this operation.
+use super::positioning::{ImageOrigin, MaskFacePart, MaskFaceParts};
+
 use glam::{vec2, Mat4, Quat, Vec2, Vec4};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
+use crate::model::{Model2d, Vertex};
+use crate::{TEX_SCALE_X, TEX_SCALE_Y};
 pub use bytemuck::cast_slice;
+use vee_parse::NxCharInfo;
+use vee_resources::color::nx::{modulate, ColorModulated};
+use vee_resources::packing::Float16;
+use vee_resources::tex::{ResourceTexture, TextureElement};
 
 const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
 
@@ -61,7 +62,7 @@ pub fn mask_texture_meshes(
 ) -> MaskModels {
     let mask = MaskFaceParts::init(char, 256.0);
 
-    let make_shape = |part: FacePart, modulated: ColorModulated, tex_data: TextureElement| {
+    let make_shape = |part: MaskFacePart, modulated: ColorModulated, tex_data: TextureElement| {
         let (vertices, indices, mtx) = quad(
             part.x,
             part.y,
@@ -146,6 +147,7 @@ pub fn mask_texture_meshes(
     }
 }
 
+/// Constructs an [MV Matrix](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_model_view_projection)
 pub fn model_view_matrix(translation: Vec2, scale: Vec2, rot_z: f32) -> Mat4 {
     Mat4::from_scale_rotation_translation(
         (scale * vec2(TEX_SCALE_X, TEX_SCALE_Y)).extend(1.0),
@@ -161,6 +163,7 @@ fn v2(x: f32, y: f32) -> [f32; 3] {
 const OPENGL_TO_WEBGPU_Y_FLIP: Mat4 = Mat4::from_cols(Vec4::X, Vec4::NEG_Y, Vec4::Z, Vec4::W);
 
 // RFL_MakeTex.c :817
+/// Constructs a `Quad` mesh from given arguments.
 /// # Panics
 /// Shouldn't panic!
 pub fn quad(
@@ -213,23 +216,27 @@ pub fn quad(
     (
         vec![
             Vertex {
-                position: v2(1.0 + base_x, -0.5),
-                tex_coords: [s0, 0.0],
+                position: v2(1.0 + base_x, -0.5).map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [s0, 0.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
             Vertex {
-                position: v2(1.0 + base_x, 0.5),
-                tex_coords: [s0, 1.0],
+                position: v2(1.0 + base_x, 0.5).map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [s0, 1.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
             Vertex {
-                position: v2(base_x, 0.5),
-                tex_coords: [s1, 1.0],
+                position: v2(base_x, 0.5).map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [s1, 1.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
             Vertex {
-                position: v2(base_x, -0.5),
-                tex_coords: [s1, 0.0],
+                position: v2(base_x, -0.5).map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [s1, 0.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
         ],
@@ -238,33 +245,41 @@ pub fn quad(
     )
 }
 
+/// Constructs a `Quad` mesh. Simplified case of `quad` function.
 pub fn trivial_quad() -> (Vec<Vertex>, Vec<u32>) {
     (
         vec![
             Vertex {
-                position: [0.5, -0.5, 0.0],
-                tex_coords: [0.0, 0.0],
+                position: [0.5, -0.5, 0.0].map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [0.0, 0.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
             Vertex {
-                position: [0.5, 0.5, 0.0],
-                tex_coords: [0.0, 1.0],
+                position: [0.5, 0.5, 0.0].map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [0.0, 1.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
             Vertex {
-                position: [-0.5, 0.5, 0.0],
-                tex_coords: [1.0, 1.0],
+                position: [-0.5, 0.5, 0.0].map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [1.0, 1.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
             Vertex {
-                position: [-0.5, -0.5, 0.0],
-                tex_coords: [1.0, 0.0],
+                position: [-0.5, -0.5, 0.0].map(Float16::from_f32),
+                _pad: 0,
+                tex_coords: [1.0, 0.0].map(Float16::from_f32),
                 normal: [0.0, 0.0, 0.0],
             },
         ],
         vec![0, 1, 2, 0, 2, 3],
     )
 }
+
+/// Converts a color from BGR to RGB (and the other way around, because this operation is symmetric.)
+/// Currently needed because of some BGR/RGB conversion issues.
 pub fn bgr_to_rgb([b, g, r, a]: [f32; 4]) -> [f32; 4] {
     [r, g, b, a]
 }

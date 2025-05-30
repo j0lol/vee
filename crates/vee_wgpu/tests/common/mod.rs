@@ -7,14 +7,11 @@ use std::{
     path::PathBuf,
     str::FromStr,
 };
-use vee_wgpu::{headless::HeadlessRenderer, texture::TextureBundle, ProgramState};
-use vfl::{
-    charinfo::nx::{BinRead, NxCharInfo},
-    res::{
-        shape::nx::{ResourceShape, SHAPE_MID_DAT},
-        tex::nx::{ResourceTexture, TEXTURE_MID_SRGB_DAT},
-    },
-};
+use vee_parse::{BinRead, NxCharInfo};
+use vee_resources::shape::{ResourceShape, SHAPE_MID_DAT};
+use vee_resources::tex::{ResourceTexture, TEXTURE_MID_SRGB_DAT};
+use vee_wgpu::texture::TextureBundle;
+use vee_wgpu::{headless::HeadlessRenderer, ProgramState};
 use wgpu::CommandEncoder;
 
 pub mod ffl_runner;

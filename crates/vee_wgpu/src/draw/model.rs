@@ -3,10 +3,11 @@ use crate::draw::ModelOpt;
 use crate::texture::TextureBundle;
 use crate::{Model3d, ProgramState};
 use glam::{uvec2, vec3, vec4, UVec2, Vec3};
-use vfl::charinfo::nx::NxCharInfo;
-use vfl::draw::render_3d::GenericModel3d;
-use vfl::draw::Vertex;
-use vfl::res::shape::nx::{GenericResourceShape, Shape, ShapeData};
+use vee_models::model::{GenericModel3d, Vertex};
+use vee_parse::NxCharInfo;
+use vee_resources::color;
+use vee_resources::packing::Float16;
+use vee_resources::shape::{GenericResourceShape, Shape, ShapeMesh};
 use wgpu::{CommandEncoder, TextureView};
 
 pub(crate) fn load_shape(
@@ -112,7 +113,7 @@ pub(crate) fn load_shape(
     let file_shape = &st.shape_data()[..];
 
     Some(mesh_to_model(
-        shape_element.shape_data(file_shape).unwrap(),
+        shape_element.mesh(file_shape).unwrap(),
         shape_kind,
         usize::from(shape_color),
         position,
@@ -122,8 +123,10 @@ pub(crate) fn load_shape(
 }
 
 // I'm in a fucking horror of my own design
+
+/// Converts a `ShapeMesh` into a `Model3d`.
 pub(crate) fn mesh_to_model(
-    d: ShapeData,
+    d: ShapeMesh,
     shape: Shape,
     color: usize,
     position: Vec3,
@@ -133,14 +136,19 @@ pub(crate) fn mesh_to_model(
     let mut vertices: Vec<Vertex> = vec![];
     let tex_coords = d
         .uvs // Go on, return NULL. See if I care.
-        .unwrap_or(vec![[f32::NAN, f32::NAN]; d.positions.len()]);
+        .unwrap_or(vec![
+            [f32::NAN, f32::NAN].map(Float16::from_f32);
+            d.positions.len()
+        ]);
     let normals = d.normals.unwrap();
 
     for i in 0..d.positions.len() {
+        let [px, py, pz, _] = d.positions[i];
         vertices.push(Vertex {
-            position: d.positions[i],
+            position: [px, py, pz],
+            _pad: 0,
             tex_coords: tex_coords[i],
-            normal: normals[i],
+            normal: normals[i].unpack(),
         })
     }
 
@@ -150,9 +158,9 @@ pub(crate) fn mesh_to_model(
         vertices,
         indices,
         color: match shape {
-            Shape::HairNormal | Shape::Beard => vfl::color::nx::linear::COMMON_COLOR[color].into(),
+            Shape::HairNormal | Shape::Beard => color::nx::linear::COMMON_COLOR[color].into(),
             Shape::FaceLine | Shape::ForeheadNormal | Shape::Nose => {
-                vfl::color::nx::linear::FACELINE_COLOR[color].into()
+                color::nx::linear::FACELINE_COLOR[color].into()
             }
             _ => vec4(0.0, 0.0, 0.0, 0.0),
         },
@@ -172,7 +180,7 @@ pub(super) fn face_line(
         char_info,
         Shape::FaceLine,
         char_info.faceline_type,
-        char_info.faceline_color,
+        char_info.faceline_color.0,
         encoder,
     )
 }
@@ -187,7 +195,7 @@ pub(super) fn forehead(
         char_info,
         Shape::ForeheadNormal,
         char_info.hair_type,
-        char_info.faceline_color,
+        char_info.faceline_color.0,
         encoder,
     )
 }
@@ -202,7 +210,7 @@ pub(super) fn hair(
         char_info,
         Shape::HairNormal,
         char_info.hair_type,
-        char_info.hair_color,
+        char_info.hair_color.0,
         encoder,
     )
 }
@@ -232,7 +240,7 @@ pub(super) fn nose(
         char_info,
         Shape::Nose,
         char_info.nose_type,
-        char_info.faceline_color,
+        char_info.faceline_color.0,
         encoder,
     )
 }
@@ -263,7 +271,7 @@ pub(super) fn glasses(
             char_info,
             Shape::Glasses,
             0,
-            char_info.glass_color,
+            char_info.glass_color.0,
             encoder,
         )
     } else {
@@ -282,7 +290,7 @@ pub(super) fn beard(
             char_info,
             Shape::Beard,
             char_info.beard_type,
-            char_info.beard_color,
+            char_info.beard_color.0,
             encoder,
         )
     } else {
@@ -300,7 +308,7 @@ pub(super) fn cap(
         char_info,
         Shape::HatCap,
         char_info.hair_type,
-        char_info.favorite_color,
+        char_info.favorite_color.0,
         encoder,
     )
 }
