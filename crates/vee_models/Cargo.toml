@@ -12,8 +12,8 @@ categories = ["parser-implementations", "rendering::data-formats"]
 description = "Making Mii models. Part of `vfl`."
 
 [dependencies]
-vee_parse = { path = "../vee_parse" }
-vee_resources = { path = "../vee_resources" }
+vee_parse = { path = "../vee_parse", version = "0.1.0" }
+vee_resources = { path = "../vee_resources", version = "0.1.0" }
 image = "0.25.6"
 bytemuck = { version = "1.23.0", features = ["derive"] }
 glam = "0.30.3"

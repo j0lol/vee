@@ -13,15 +13,14 @@ description = "Rendering Miis with `wgpu`. Part of `vfl`."
 
 [dependencies]
 wgpu = "25"
-#vfl = { path = "../vfl", features = ["draw", "res"] }
 bytemuck = "1.23.0"
 glam = "0.30.3"
 image = "0.25.6"
 pollster = "0.4.0"
 futures-intrusive = "0.5.0"
-vee_parse = { path = "../vee_parse" }
-vee_resources = { path = "../vee_resources" }
-vee_models = { path = "../vee_models" }
+vee_parse = { path = "../vee_parse", version = "0.1.0" }
+vee_resources = { path = "../vee_resources", version = "0.1.0" }
+vee_models = { path = "../vee_models", version = "0.1.0" }
 
 [dev-dependencies]
 glam = { version = "0.30.3", features = ["serde", "approx"] }
