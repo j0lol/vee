@@ -39,7 +39,7 @@ pub fn setup_renderer_linear_color() -> Everything {
 
     let mut char_info = File::open(format!(
         "{}/resources_here/jasmine.charinfo",
-        env!("CARGO_WORKSPACE_DIR"),
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
     ))
     .unwrap();
     let char = NxCharInfo::read(&mut char_info).unwrap();
@@ -73,7 +73,7 @@ pub fn setup_renderer() -> Everything {
 
     let mut char_info = File::open(format!(
         "{}/resources_here/jasmine.charinfo",
-        env!("CARGO_WORKSPACE_DIR"),
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
     ))
     .unwrap();
     let char = NxCharInfo::read(&mut char_info).unwrap();
@@ -109,7 +109,7 @@ pub struct MaskTestData {
 pub fn get_mask_data() -> MaskTestData {
     let file = PathBuf::from(format!(
         "{}/test_data/inputs/jasmine_mask_mtx.json",
-        env!("CARGO_WORKSPACE_DIR"),
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
     ));
 
     if fs::exists(&file).unwrap() {
@@ -117,7 +117,7 @@ pub fn get_mask_data() -> MaskTestData {
     } else {
         let mut ffl = FFlRunner {
             dir: PathBuf::from_str(dbg!(concat!(
-                env!("CARGO_WORKSPACE_DIR"),
+                std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
                 "../FFL-Testing/"
             )))
             .unwrap(),

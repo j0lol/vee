@@ -91,7 +91,7 @@ mod tests {
     #[test]
     fn mii_deser() -> R {
         let mut mii = File::open(concat!(
-            env!("CARGO_WORKSPACE_DIR"),
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
             "/resources_here/j0.charinfo"
         ))?;
 

@@ -16,10 +16,10 @@ description = "Mii parsing and rendering research library."
 all-features = true
 
 [dependencies]
-vee_parse = { path = "../vee_parse", version = "0.1.0" }
-vee_resources = { path = "../vee_resources", optional = true, version = "0.1.0" }
-vee_models = { path = "../vee_models", optional = true, version = "0.1.0" }
-vee_wgpu = { path = "../vee_wgpu", optional = true, version = "0.1.0" }
+vee_parse = { path = "../vee_parse", version = "0.1.1" }
+vee_resources = { path = "../vee_resources", optional = true, version = "0.1.1" }
+vee_models = { path = "../vee_models", optional = true, version = "0.1.1" }
+vee_wgpu = { path = "../vee_wgpu", optional = true, version = "0.1.1" }
 
 [features]
 res = ["dep:vee_resources", "dep:vee_models"]

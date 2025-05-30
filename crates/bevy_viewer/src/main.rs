@@ -10,7 +10,7 @@ use bevy::{
     render::RenderPlugin,
     window::{CursorGrabMode, PrimaryWindow},
 };
-use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin, egui};
+use bevy_egui::{egui, EguiContextPass, EguiContexts, EguiPlugin};
 use char::setup_char;
 use egui_blocking_plugin::{EguiBlockInputState, EguiBlockingPlugin};
 use mask::{setup_glasses, setup_mask};
@@ -28,7 +28,10 @@ mod char;
 mod load;
 mod mask;
 
-const CHARINFO: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../soyun.charinfo");
+const CHARINFO: &str = concat!(
+    std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+    "/../soyun.charinfo"
+);
 static CHAR_TRANSFORM: Transform = Transform::from_scale(Vec3::splat(0.05));
 #[derive(Component)]
 struct MainPassCamera;

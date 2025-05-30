@@ -104,7 +104,7 @@ impl State {
 
         let mut char_info = File::open(format!(
             "{}/resources_here/{}",
-            env!("CARGO_WORKSPACE_DIR"),
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
             FACES[0]
         ))
         .unwrap();
@@ -312,7 +312,7 @@ impl State {
 
             let mut char_info = File::open(format!(
                 "{}/resources_here/{}",
-                env!("CARGO_WORKSPACE_DIR"),
+                std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
                 FACES[self.camera_rotations % FACES.len()]
             ))
             .unwrap();

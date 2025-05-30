@@ -20,7 +20,7 @@ fn render_mask() {
 
     image
         .save(concat!(
-            env!("CARGO_WORKSPACE_DIR"),
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
             "/test_data/outputs/mask.png",
         ))
         .unwrap();
@@ -45,7 +45,7 @@ fn render_mask_eyebrows() {
 
     image
         .save(concat!(
-            env!("CARGO_WORKSPACE_DIR"),
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
             "/test_data/outputs/mask_brows.png",
         ))
         .unwrap();

@@ -15,7 +15,7 @@ description = "Parsing Mii mesh and texture files. Part of `vfl`."
 half = "2.6.0"
 image = "0.25.6"
 num_enum = "0.7.3"
-vee_parse = { path = "../vee_parse", version = "0.1.0" }
+vee_parse = { path = "../vee_parse", version = "0.1.1" }
 tegra_swizzle = { version = "0.4.0" }
 texture2ddecoder = { version = "0.1.2" }
 binrw = "0.15.0"

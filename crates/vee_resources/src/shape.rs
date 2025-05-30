@@ -7,10 +7,6 @@ use std::{
     io::{Cursor, Read, Seek, SeekFrom},
 };
 
-/// For internal use...
-pub const SHAPE_MID_DAT: &str =
-    concat!(env!("CARGO_WORKSPACE_DIR"), "/resources_here/ShapeMid.dat");
-
 // #[cfg(feature = "gltf")]
 // use mesh_tools::GltfBuilder;
 
@@ -375,7 +371,10 @@ mod tests {
 
     #[test]
     fn read() -> R {
-        let mut bin = BufReader::new(File::open(SHAPE_MID_DAT)?);
+        let mut bin = BufReader::new(File::open(format!(
+            "{}/resources_here/ShapeMid.dat"
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap()
+        ))?);
 
         let _ = ResourceShape::read(&mut bin)?;
 

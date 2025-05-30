@@ -8,12 +8,6 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::error::Error;
 use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
-/// For internal use...
-pub const TEXTURE_MID_SRGB_DAT: &str = concat!(
-    env!("CARGO_WORKSPACE_DIR"),
-    "/resources_here/NXTextureMidSRGB.dat"
-);
-
 /// Specifies information about the texture.
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceTextureAttribute {
@@ -266,7 +260,10 @@ mod tests {
 
     #[test]
     fn read() -> R {
-        let mut bin = BufReader::new(File::open(TEXTURE_MID_SRGB_DAT)?);
+        let mut bin = BufReader::new(File::open(format!(
+            "{}/resources_here/NXTextureMidSRGB.dat",
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap()
+        ))?);
 
         let _ = ResourceTexture::read(&mut bin)?;
 
