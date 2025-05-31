@@ -8,12 +8,9 @@ use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
 use vfl::impl_wgpu::draw::CharModel;
 use vfl::impl_wgpu::texture::TextureBundle;
 use vfl::impl_wgpu::ProgramState;
+use vfl::parse::{BinRead, NxCharInfo};
 use vfl::res::shape::ResourceShape;
 use vfl::res::tex::ResourceTexture;
-use vfl::{
-    parse::{BinRead, NxCharInfo},
-    res::{shape::SHAPE_MID_DAT, tex::TEXTURE_MID_SRGB_DAT},
-};
 use wgpu::{util::DeviceExt, Backends, Features};
 use winit::window::Window;
 
@@ -155,11 +152,19 @@ impl State {
 
         let camera_rotations = 0;
 
-        let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
+        let shape_file_path = format!(
+            "{}resources_here/ShapeMid.dat",
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+        );
+        let tex_file_path = format!(
+            "{}resources_here/NXTextureMidSRGB.dat",
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+        );
+        let shape_header = ResourceShape::read(&mut File::open(&shape_file_path).unwrap()).unwrap();
         let texture_header =
-            ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-        let shape_data = Rc::new(std::fs::read(SHAPE_MID_DAT).unwrap());
-        let texture_data = Rc::new(std::fs::read(TEXTURE_MID_SRGB_DAT).unwrap());
+            ResourceTexture::read(&mut File::open(&tex_file_path).unwrap()).unwrap();
+        let shape_data = Rc::new(std::fs::read(&shape_file_path).unwrap());
+        let texture_data = Rc::new(std::fs::read(&tex_file_path).unwrap());
 
         let resources = ResourceData {
             shape_header,

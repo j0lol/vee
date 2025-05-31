@@ -8,8 +8,8 @@ use std::{
     str::FromStr,
 };
 use vee_parse::{BinRead, NxCharInfo};
-use vee_resources::shape::{ResourceShape, SHAPE_MID_DAT};
-use vee_resources::tex::{ResourceTexture, TEXTURE_MID_SRGB_DAT};
+use vee_resources::shape::ResourceShape;
+use vee_resources::tex::ResourceTexture;
 use vee_wgpu::texture::TextureBundle;
 use vee_wgpu::{headless::HeadlessRenderer, ProgramState};
 use wgpu::CommandEncoder;
@@ -29,7 +29,16 @@ pub struct Everything {
 }
 
 pub fn setup_renderer_linear_color() -> Everything {
-    let renderer = HeadlessRenderer::new(SHAPE_MID_DAT, TEXTURE_MID_SRGB_DAT);
+    let shape_file_path = format!(
+        "{}resources_here/ShapeMid.dat",
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+    );
+    let tex_file_path = format!(
+        "{}resources_here/NXTextureMidSRGB.dat",
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+    );
+
+    let renderer = HeadlessRenderer::new(&shape_file_path, &tex_file_path);
     let encoder = renderer
         .device()
         .create_command_encoder(&Default::default());
@@ -44,11 +53,10 @@ pub fn setup_renderer_linear_color() -> Everything {
     .unwrap();
     let char = NxCharInfo::read(&mut char_info).unwrap();
 
-    let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
-    let texture_header =
-        ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-    let shape_data = fs::read(SHAPE_MID_DAT).unwrap();
-    let texture_data = fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
+    let shape_header = ResourceShape::read(&mut File::open(&shape_file_path).unwrap()).unwrap();
+    let texture_header = ResourceTexture::read(&mut File::open(&tex_file_path).unwrap()).unwrap();
+    let shape_data = fs::read(&shape_file_path).unwrap();
+    let texture_data = fs::read(&tex_file_path).unwrap();
 
     Everything {
         render: renderer,
@@ -64,7 +72,16 @@ pub fn setup_renderer_linear_color() -> Everything {
 
 #[allow(dead_code)]
 pub fn setup_renderer() -> Everything {
-    let renderer = HeadlessRenderer::new(SHAPE_MID_DAT, TEXTURE_MID_SRGB_DAT);
+    let shape_file_path = format!(
+        "{}resources_here/ShapeMid.dat",
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+    );
+    let tex_file_path = format!(
+        "{}resources_here/NXTextureMidSRGB.dat",
+        std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+    );
+
+    let renderer = HeadlessRenderer::new(&shape_file_path, &tex_file_path);
     let encoder = renderer
         .device()
         .create_command_encoder(&Default::default());
@@ -78,11 +95,10 @@ pub fn setup_renderer() -> Everything {
     .unwrap();
     let char = NxCharInfo::read(&mut char_info).unwrap();
 
-    let shape_header = ResourceShape::read(&mut File::open(SHAPE_MID_DAT).unwrap()).unwrap();
-    let texture_header =
-        ResourceTexture::read(&mut File::open(TEXTURE_MID_SRGB_DAT).unwrap()).unwrap();
-    let shape_data = fs::read(SHAPE_MID_DAT).unwrap();
-    let texture_data = fs::read(TEXTURE_MID_SRGB_DAT).unwrap();
+    let shape_header = ResourceShape::read(&mut File::open(&shape_file_path).unwrap()).unwrap();
+    let texture_header = ResourceTexture::read(&mut File::open(&tex_file_path).unwrap()).unwrap();
+    let shape_data = fs::read(&shape_file_path).unwrap();
+    let texture_data = fs::read(&tex_file_path).unwrap();
 
     Everything {
         render: renderer,
