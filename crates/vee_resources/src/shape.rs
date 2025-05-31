@@ -5,6 +5,7 @@ use binrw::{BinRead, Endian};
 use std::{
     error::Error,
     io::{Cursor, Read, Seek, SeekFrom},
+    usize,
 };
 
 // #[cfg(feature = "gltf")]
@@ -93,18 +94,11 @@ impl BinRead for ShapeMesh {
 
         let vertex_count = args.attr_size[AttributeType::Position as usize] / PER_VERTEX_SIZE;
 
-        let mut positions = vec![];
+        // Pre-size the Vec
+        let mut positions = Vec::with_capacity(usize::try_from(vertex_count).unwrap());
+
         for _vertex in 0..vertex_count {
-            positions.push({
-                let positions = <[Float16; 4]>::read_options(reader, endian, ())?;
-                // let _ = <u16>::read_options(reader, endian, ())?;
-
-                // Skip 2 bytes for padding
-                // let _ = reader.take(2);
-
-                positions
-                // positions.map(f16::from_bits)
-            });
+            positions.push(<[Float16; 4]>::read_options(reader, endian, ())?);
         }
 
         // Read indices
@@ -112,10 +106,9 @@ impl BinRead for ShapeMesh {
 
         let index_count = args.index_size / PER_INDEX_SIZE;
 
-        let mut indices = vec![];
+        let mut indices = Vec::with_capacity(usize::try_from(index_count).unwrap());
         for _index in 0..index_count {
-            let value = <u16>::read_options(reader, endian, ())?;
-            indices.push(value);
+            indices.push(<u16>::read_options(reader, endian, ())?);
         }
 
         // Read normals
@@ -124,10 +117,9 @@ impl BinRead for ShapeMesh {
                 args.attr_offset[AttributeType::Normal as usize],
             )))?;
 
-            let mut normals = vec![];
+            let mut normals = Vec::with_capacity(usize::try_from(vertex_count).unwrap());
             for _vertex in 0..vertex_count {
-                let packed = <Vec3PackedSnorm>::read_options(reader, endian, ())?;
-                normals.push(packed);
+                normals.push(<Vec3PackedSnorm>::read_options(reader, endian, ())?);
             }
 
             Some(normals)
@@ -141,7 +133,7 @@ impl BinRead for ShapeMesh {
                 args.attr_offset[AttributeType::Uv as usize],
             )))?;
 
-            let mut uvs = vec![];
+            let mut uvs = Vec::with_capacity(usize::try_from(vertex_count).unwrap());
             for _vertex in 0..vertex_count {
                 uvs.push(<[Float16; 2]>::read_options(reader, endian, ())?);
             }
@@ -159,7 +151,7 @@ impl BinRead for ShapeMesh {
 
             let color_count = args.attr_size[AttributeType::Param as usize] / PER_VERTEX_SIZE;
 
-            let mut color_params = vec![];
+            let mut color_params = Vec::with_capacity(usize::try_from(color_count).unwrap());
             for _color in 0..color_count {
                 color_params.push(<u8>::read_options(reader, endian, ())?);
             }

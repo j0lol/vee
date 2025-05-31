@@ -85,8 +85,7 @@ fn main() {
             .unwrap();
             let res_file = std::fs::read(resource_file).unwrap();
 
-            let mut exists = vec![];
-            for index in 0..match texture_type {
+            let texture_type_length = match texture_type {
                 TextureType::Hat => res_tex.hat.len(),
                 TextureType::Eye => res_tex.eye.len(),
                 TextureType::Eyebrow => res_tex.eyebrow.len(),
@@ -98,7 +97,10 @@ fn main() {
                 TextureType::Mouth => res_tex.mouth.len(),
                 TextureType::Mustache => res_tex.mustache.len(),
                 TextureType::NoseLine => res_tex.noseline.len(),
-            } {
+            };
+            let mut exists = Vec::with_capacity(texture_type_length);
+
+            for index in 0..texture_type_length {
                 let texture_element = lookup_texture_type(texture_type, index, res_tex).unwrap();
                 if (texture_element.texture.width == 0 && texture_element.texture.height == 0)
                     || (texture_element.texture.width == 8 && texture_element.texture.height == 8)

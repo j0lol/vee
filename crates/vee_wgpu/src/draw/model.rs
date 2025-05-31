@@ -3,10 +3,11 @@ use crate::draw::ModelOpt;
 use crate::texture::TextureBundle;
 use crate::{Model3d, ProgramState};
 use glam::{uvec2, vec3, vec4, UVec2, Vec3};
+use std::iter::zip;
 use vee_models::model::{GenericModel3d, Vertex};
 use vee_parse::NxCharInfo;
 use vee_resources::color;
-use vee_resources::packing::Float16;
+use vee_resources::packing::{Float16, Vec3PackedSnorm};
 use vee_resources::shape::{GenericResourceShape, Shape, ShapeMesh};
 use wgpu::{CommandEncoder, TextureView};
 
@@ -133,26 +134,42 @@ pub(crate) fn mesh_to_model(
     scale: Vec3,
     projected_texture: Option<TextureBundle>,
 ) -> Model3d {
-    let mut vertices: Vec<Vertex> = vec![];
-    let tex_coords = d
+    let vertices_count = d.positions.len();
+
+    /// Drop the w component in positions
+    let positions: Vec<_> = d
+        .positions
+        .into_iter()
+        .map(|[x, y, z, w]| [x, y, z])
+        .collect();
+
+    // Unwrap UVs and replace with NaNs if needed...
+    let tex_coords: Vec<_> = d
         .uvs // Go on, return NULL. See if I care.
         .unwrap_or(vec![
             [f32::NAN, f32::NAN].map(Float16::from_f32);
-            d.positions.len()
+            vertices_count
         ]);
-    let normals = d.normals.unwrap();
 
-    for i in 0..d.positions.len() {
-        let [px, py, pz, _] = d.positions[i];
-        vertices.push(Vertex {
-            position: [px, py, pz],
+    // Unpack normals
+    let normals: Vec<_> = d
+        .normals
+        .unwrap()
+        .into_iter()
+        .map(Vec3PackedSnorm::unpack)
+        .collect();
+
+    // Build vertex vector
+    let vertices = zip(zip(positions, tex_coords), normals)
+        .map(|((position, tex_coords), normal)| Vertex {
+            position,
             _pad: 0,
-            tex_coords: tex_coords[i],
-            normal: normals[i].unpack(),
+            tex_coords,
+            normal,
         })
-    }
+        .collect();
 
-    let indices = d.indices.iter().map(|x| u32::from(*x)).collect();
+    let indices = d.indices.into_iter().map(u32::from).collect();
 
     GenericModel3d {
         vertices,
