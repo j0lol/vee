@@ -70,7 +70,7 @@ pub(crate) fn load_shape(
         Shape::Glasses => Vec3::splat(0.15 * f32::from(char_info.glass_scale) + 0.4),
         // RFL_Model.c :705
         Shape::Nose | Shape::NoseLine => Vec3::splat(0.175 * f32::from(char_info.nose_scale) + 0.4),
-        Shape::HairNormal | Shape::ForeheadNormal => {
+        Shape::HairNormal | Shape::ForeheadNormal | Shape::HatNormal => {
             if char_info.hair_flip != 0 {
                 vec3(-1.0, 1.0, 1.0)
             } else {
