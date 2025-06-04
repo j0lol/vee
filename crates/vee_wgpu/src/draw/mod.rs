@@ -1,6 +1,6 @@
 //! Drawing models and textures.
 
-use crate::draw::model::{beard, cap, face_line, forehead, glasses, hair, mask, nose, nose_line};
+use crate::draw::model::{beard, face_line, forehead, glasses, hair, hat, mask, nose, nose_line};
 use crate::{Model3d, ProgramState};
 use vee_parse::NxCharInfo;
 use wgpu::{CommandEncoder, TextureView};
@@ -22,7 +22,7 @@ pub struct CharModel {
     pub glasses: ModelOpt,
     pub nose_line: Model,
     pub beard: ModelOpt,
-    pub cap: ModelOpt,
+    pub hat: ModelOpt,
 }
 
 impl CharModel {
@@ -40,7 +40,7 @@ impl CharModel {
             glasses: glasses(st, char_info, encoder),
             nose_line: nose_line(st, char_info, encoder).unwrap(),
             beard: beard(st, char_info, encoder),
-            cap: cap(st, char_info, encoder),
+            hat: hat(st, char_info, encoder),
         }
     }
 
@@ -74,8 +74,8 @@ impl CharModel {
         if let Some(beard) = self.beard.as_mut() {
             st.draw_model_3d(beard, texture_view, encoder);
         }
-        if let Some(cap) = self.cap.as_mut() {
-            st.draw_model_3d(cap, texture_view, encoder);
+        if let Some(hat) = self.hat.as_mut() {
+            st.draw_model_3d(hat, texture_view, encoder);
         }
     }
 }

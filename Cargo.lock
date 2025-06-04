@@ -230,6 +230,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+
+[[package]]
 name = "binrw"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -341,6 +347,12 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "byteorder"
+version = "1.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "byteorder-lite"
@@ -915,6 +927,24 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "image"
+version = "0.24.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "color_quant",
+ "exr",
+ "gif",
+ "jpeg-decoder",
+ "num-traits",
+ "png",
+ "qoi",
+ "tiff",
+]
+
+[[package]]
+name = "image"
 version = "0.25.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db35664ce6b9810857a38a906215e75a9c879f0696556a39f59c62829710251a"
@@ -1031,6 +1061,9 @@ name = "jpeg-decoder"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5d4a7da358eff58addd2877a45865158f0d78c911d43a5784ceb7bbf52833b0"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "js-sys"
@@ -1193,6 +1226,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "mesh-tools"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acf50c024ab840a230aab9e2df52c147d8911e5170d2240cb546f8714b4159e7"
+dependencies = [
+ "base64",
+ "byteorder",
+ "image 0.24.9",
+ "mint",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
 name = "metal"
 version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1222,6 +1271,12 @@ dependencies = [
  "adler2",
  "simd-adler32",
 ]
+
+[[package]]
+name = "mint"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e53debba6bda7a793e5f99b8dacf19e626084f525f7829104ba9898f367d85ff"
 
 [[package]]
 name = "naga"
@@ -2435,6 +2490,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
+name = "uuid"
+version = "1.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3cf4199d1e5d15ddd86a694e4d0dffa9c323ce759fea589f00fef9d81cc1931d"
+dependencies = [
+ "getrandom 0.3.3",
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "v_frame"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2451,7 +2517,7 @@ version = "0.1.1"
 dependencies = [
  "bytemuck",
  "glam",
- "image",
+ "image 0.25.6",
  "vee_parse",
  "vee_resources",
 ]
@@ -2471,7 +2537,7 @@ dependencies = [
  "bytemuck",
  "flate2",
  "half",
- "image",
+ "image 0.25.6",
  "num_enum",
  "tegra_swizzle",
  "texture2ddecoder",
@@ -2486,7 +2552,7 @@ dependencies = [
  "bytemuck",
  "futures-intrusive",
  "glam",
- "image",
+ "image 0.25.6",
  "pollster",
  "serde",
  "serde_json",
@@ -2523,6 +2589,8 @@ name = "vfl-cli"
 version = "0.1.1"
 dependencies = [
  "clap",
+ "mesh-tools",
+ "num_enum",
  "vfl",
 ]
 

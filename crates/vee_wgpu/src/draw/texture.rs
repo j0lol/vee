@@ -176,7 +176,7 @@ pub(crate) fn draw_glasses(
     );
 }
 
-pub(crate) fn draw_cap(
+pub(crate) fn draw_hat(
     st: &mut dyn ProgramState,
     char_info: &NxCharInfo,
     texture_view: &TextureView,
@@ -188,7 +188,7 @@ pub(crate) fn draw_cap(
         st,
         char_info,
         res_texture.hat[char_info.hair_type as usize],
-        ColorModulated::Cap,
+        ColorModulated::Hat,
     );
 
     let Some((rendered_texture, modulation)) = texture else {

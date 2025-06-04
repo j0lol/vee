@@ -2,12 +2,12 @@
 use crate::inflate_bytes;
 use crate::packing::{Float16, Vec3PackedSnorm};
 use binrw::{BinRead, Endian};
+use num_enum::{FromPrimitive, TryFromPrimitive};
 use std::{
     error::Error,
     io::{Cursor, Read, Seek, SeekFrom},
     usize,
 };
-
 // #[cfg(feature = "gltf")]
 // use mesh_tools::GltfBuilder;
 
@@ -274,9 +274,10 @@ pub struct ResourceShapeFacelineTransform {
 }
 
 /// Every type of shape mesh stored in the resource data.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Shape {
-    Beard,
+    Beard = 0,
     FaceLine,
     Mask,
     HatNormal,

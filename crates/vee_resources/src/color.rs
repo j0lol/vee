@@ -1,7 +1,20 @@
 //! Contains the color tables for Cafe and Nx. Also implements modulation for Nx, (not Cafe yet!)
 //! Expect modulation to become generic in the future.
 
+use std::f64;
+
 type Color = [f32; 4];
+
+// HACK. Expect inaccuracy. Goes "up to" `f64` for hopeful accuracy boost.
+// Thanks http://www.cyril-richon.com/blog/2019/1/23/python-srgb-to-linear-linear-to-srgb
+fn srgb2lin(i: f32) -> f32 {
+    let i: f64 = i.into();
+    (if i <= 0.0404482362771082 {
+        i / 12.92
+    } else {
+        f64::powf((i + 0.055) / 1.055, 2.4)
+    }) as f32
+}
 
 pub mod cafe {
 
@@ -71,6 +84,21 @@ pub mod cafe {
         [0.658, 0.376, 0.000, 1.000],
         [0.470, 0.439, 0.407, 1.000],
     ];
+
+    pub const FAVORITE_COLOR: [[f32; 4]; 12] = [
+        [0.824, 0.118, 0.078, 1.000],
+        [1.000, 0.431, 0.098, 1.000],
+        [1.000, 0.847, 0.125, 1.000],
+        [0.471, 0.824, 0.125, 1.000],
+        [0.000, 0.471, 0.188, 1.000],
+        [0.039, 0.282, 0.706, 1.000],
+        [0.235, 0.667, 0.871, 1.000],
+        [0.961, 0.353, 0.490, 1.000],
+        [0.451, 0.157, 0.678, 1.000],
+        [0.282, 0.220, 0.094, 1.000],
+        [0.878, 0.878, 0.878, 1.000],
+        [0.094, 0.094, 0.078, 1.000],
+    ];
 }
 
 pub mod nx {
@@ -80,7 +108,7 @@ pub mod nx {
     use num_enum::IntoPrimitive;
     use vee_parse::NxCharInfo;
 
-    use super::Color;
+    use super::{srgb2lin, Color};
 
     /// 'Parts' that can be modulated. This is basically every type of texture or shape,
     /// though single-color shapes are not included (because they are trivial.)
@@ -97,7 +125,7 @@ pub mod nx {
         FacelineWrinkle,
         Mole,
         Mustache,
-        Cap,
+        Hat,
     }
 
     pub const NON_MODULATION: Color = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
@@ -116,6 +144,7 @@ pub mod nx {
         LayeredRgbTexture = 2,
         AlphaTexture = 3,
         LuminanceAlphaTexture = 4,
+        LuminanceTexture = 5, // Unofficial?? Variant of LumAlpha
     }
 
     /// An intent that this texture will be modulated in the described way in a GPU shader.
@@ -204,10 +233,12 @@ pub mod nx {
                 ],
             },
 
-            ColorModulated::Cap => ModulationIntent {
-                mode: M::LuminanceAlphaTexture,
+            ColorModulated::Hat => ModulationIntent {
+                mode: M::LuminanceTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.favorite_color.0)],
+                    // For some reason favorite colors aren't common colors.
+                    // Since the Nx and Cafe tables are the same we can just do some reuse.
+                    super::cafe::FAVORITE_COLOR[usize::from(char.favorite_color.0)].map(srgb2lin),
                     NON_MODULATION,
                     NON_MODULATION,
                 ],

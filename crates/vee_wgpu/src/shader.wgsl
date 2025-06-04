@@ -48,6 +48,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     //     LayeredRgbTexture = 2,
     //     AlphaTexture = 3,
     //     LuminanceAlphaTexture = 4,
+    //     LuminanceTexture = 5
     // }
 
     if mvp.modulation_mode == 0 {
@@ -60,6 +61,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         return modulate_alpha(color);
     } else if mvp.modulation_mode == 4 {
         return modulate_lum_alpha(color);
+    } else if mvp.modulation_mode == 5 {
+        return modulate_lum(color);
     } else {
         // OOB access, return RebeccaPurple
         return vec4f(0.4, 0.2, 0.6, 1.0);
@@ -88,9 +91,16 @@ fn modulate_alpha(color: vec4f) -> vec4f {
 fn modulate_lum_alpha(color: vec4f) -> vec4f {
     let repl_lum = mvp.color_r;
 
-    return vec4f(color.r * repl_lum.rgb, repl_lum.a * color.g);
+    return vec4f(color.r * repl_lum.rgb, color.g * repl_lum.a);
 }
 
+// Texture passes luminance, we colorize it (alpha always 1).
+// [l,0,0,0] -> [r,g,b,1]
+fn modulate_lum(color: vec4f) -> vec4f {
+    let repl_lum = mvp.color_r;
+
+    return vec4f(color.r * repl_lum.rgb, 1.0);
+}
 
 fn modulate_rgba(color: vec4f) -> vec4f {
     let repl_r = mvp.color_r;

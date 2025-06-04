@@ -1,4 +1,4 @@
-use crate::draw::texture::{draw_cap, draw_faceline, draw_glasses, draw_mask, draw_noseline};
+use crate::draw::texture::{draw_faceline, draw_glasses, draw_hat, draw_mask, draw_noseline};
 use crate::draw::ModelOpt;
 use crate::texture::TextureBundle;
 use crate::{Model3d, ProgramState};
@@ -43,7 +43,7 @@ pub(crate) fn load_shape(
 
     // Some meshes need positioning.
     let position = match shape_kind {
-        Shape::HairNormal | Shape::ForeheadNormal => {
+        Shape::HairNormal | Shape::ForeheadNormal | Shape::HatNormal => {
             // FFLiCharModelCreator.cpp :638
             Vec3::from_array(faceline_transform.hair_translate)
         }
@@ -68,13 +68,9 @@ pub(crate) fn load_shape(
     let scale = match shape_kind {
         // RFL_Model.c :784
         Shape::Glasses => Vec3::splat(0.15 * f32::from(char_info.glass_scale) + 0.4),
-        Shape::HairCap | Shape::ForeheadCap | Shape::HatCap => {
-            dbg!(shape_kind);
-            faceline_transform.hair_translate.into()
-        }
         // RFL_Model.c :705
         Shape::Nose | Shape::NoseLine => Vec3::splat(0.175 * f32::from(char_info.nose_scale) + 0.4),
-        Shape::HairNormal => {
+        Shape::HairNormal | Shape::ForeheadNormal => {
             if char_info.hair_flip != 0 {
                 vec3(-1.0, 1.0, 1.0)
             } else {
@@ -107,7 +103,7 @@ pub(crate) fn load_shape(
         Shape::Mask => draw_tex(draw_mask, uvec2(512, 512)),
         Shape::FaceLine => draw_tex(draw_faceline, uvec2(512, 512)),
         Shape::Glasses => draw_tex(draw_glasses, uvec2(512, 512)),
-        Shape::HatCap | Shape::HairCap | Shape::ForeheadCap => draw_tex(draw_cap, uvec2(512, 512)),
+        Shape::HatNormal => draw_tex(draw_hat, uvec2(128, 32)), // It's just that size.
         _ => None,
     };
 
@@ -175,7 +171,9 @@ pub(crate) fn mesh_to_model(
         vertices,
         indices,
         color: match shape {
-            Shape::HairNormal | Shape::Beard => color::nx::linear::COMMON_COLOR[color].into(),
+            Shape::HairNormal | Shape::Beard | Shape::HatNormal => {
+                color::nx::linear::COMMON_COLOR[color].into()
+            }
             Shape::FaceLine | Shape::ForeheadNormal | Shape::Nose => {
                 color::nx::linear::FACELINE_COLOR[color].into()
             }
@@ -315,7 +313,7 @@ pub(super) fn beard(
     }
 }
 
-pub(super) fn cap(
+pub(super) fn hat(
     st: &mut impl ProgramState,
     char_info: &NxCharInfo,
     encoder: &mut CommandEncoder,
@@ -323,8 +321,8 @@ pub(super) fn cap(
     load_shape(
         st,
         char_info,
-        Shape::HatCap,
-        char_info.hair_type,
+        Shape::HatNormal,
+        dbg!(char_info.hair_type),
         char_info.favorite_color.0,
         encoder,
     )

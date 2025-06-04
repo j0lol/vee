@@ -101,7 +101,12 @@ impl State {
 
         let mut char_info = File::open(format!(
             "{}/resources_here/{}",
-            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap_or(
+                std::env::current_dir()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            ),
             FACES[0]
         ))
         .unwrap();
@@ -153,12 +158,22 @@ impl State {
         let camera_rotations = 0;
 
         let shape_file_path = format!(
-            "{}resources_here/ShapeMid.dat",
-            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+            "{}/resources_here/ShapeMid.dat",
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap_or(
+                std::env::current_dir()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            ),
         );
         let tex_file_path = format!(
-            "{}resources_here/NXTextureMidSRGB.dat",
-            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+            "{}/resources_here/NXTextureMidSRGB.dat",
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap_or(
+                std::env::current_dir()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string()
+            ),
         );
         let shape_header = ResourceShape::read(&mut File::open(&shape_file_path).unwrap()).unwrap();
         let texture_header =
@@ -317,7 +332,12 @@ impl State {
 
             let mut char_info = File::open(format!(
                 "{}/resources_here/{}",
-                std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+                std::env::var("CARGO_WORKSPACE_DIR").unwrap_or(
+                    std::env::current_dir()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string()
+                ),
                 FACES[self.camera_rotations % FACES.len()]
             ))
             .unwrap();
