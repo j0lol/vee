@@ -1,10 +1,15 @@
 use clap::{arg, Parser, Subcommand, ValueEnum};
+use mesh_tools::compat::point3_new;
+use mesh_tools::{GltfBuilder, Triangle};
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::u8;
 use vfl::parse::BinRead;
+use vfl::res::packing::Float16;
+use vfl::res::shape::{GenericResourceShape, ResourceShape, Shape, ShapeMesh};
 use vfl::res::tex::{ResourceTexture, TextureElement};
-
 // TODO: use real names
 // https://github.com/ariankordi/ffl/blob/97eecdf3688f92c4c95cecf5d6ab3e84c0ee42c0/tools/FFLResource.py#L448
 #[derive(Debug, Copy, Clone, ValueEnum)]
@@ -20,6 +25,24 @@ enum TextureType {
     Mouth,
     Mustache,
     NoseLine,
+}
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, ValueEnum, IntoPrimitive)]
+enum ArgShape {
+    Beard = 0,
+    FaceLine,
+    Mask,
+    HatNormal,
+    HatCap,
+    ForeheadNormal,
+    ForeheadCap,
+    HairNormal,
+    HairCap,
+    Glasses,
+    Nose,
+    NoseLine,
+    HairTransform,
+    FaceLineTransform,
 }
 
 /// Vee resource extractor
@@ -49,6 +72,25 @@ enum Subcommands {
         resource_file: PathBuf,
         #[arg(value_enum, short, long)]
         texture_type: TextureType,
+    },
+
+    /// Show existant textures
+    ShapeExists {
+        #[arg(short, long)]
+        resource_file: PathBuf,
+        #[arg(value_enum, short, long)]
+        shape_type: ArgShape,
+    },
+
+    /// Read textures
+    ShapeModel {
+        #[arg(short, long)]
+        resource_file: PathBuf,
+        #[arg(value_enum, short, long)]
+        shape_type: ArgShape,
+        #[arg(short, long)]
+        index: usize,
+        output: PathBuf,
     },
 }
 
@@ -124,6 +166,136 @@ fn main() {
                     .collect::<Vec<_>>()
             )
         }
+        Subcommands::ShapeExists {
+            resource_file,
+            shape_type,
+        } => {
+            let res_shape = ResourceShape::read(&mut BufReader::new(
+                File::open(resource_file.clone()).unwrap(),
+            ))
+            .unwrap();
+            let res_file = std::fs::read(resource_file).unwrap();
+
+            let shape_type_len = match shape_type {
+                ArgShape::Beard => res_shape.beard.len(),
+                ArgShape::FaceLine => res_shape.face_line.len(),
+                ArgShape::Mask => res_shape.mask.len(),
+                ArgShape::HatNormal => res_shape.hat_normal.len(),
+                ArgShape::HatCap => res_shape.hat_cap.len(),
+                ArgShape::ForeheadNormal => res_shape.forehead_normal.len(),
+                ArgShape::ForeheadCap => res_shape.forehead_cap.len(),
+                ArgShape::HairNormal => res_shape.hair_normal.len(),
+                ArgShape::HairCap => res_shape.hair_cap.len(),
+                ArgShape::Glasses => res_shape.glasses.len(),
+                ArgShape::Nose => res_shape.nose.len(),
+                ArgShape::NoseLine => res_shape.nose_line.len(),
+                ArgShape::HairTransform => res_shape.hair_transform.len(),
+                ArgShape::FaceLineTransform => res_shape.face_line_transform.len(),
+            };
+
+            let mut exists = Vec::with_capacity(shape_type_len);
+
+            for index in 0..shape_type_len {
+                let shape = lookup_shape_type(shape_type, index, res_shape).unwrap();
+
+                let GenericResourceShape::Element(mut shape) = shape else {
+                    exists.push(false);
+                    continue;
+                };
+
+                let mesh = shape.mesh(&res_file).unwrap();
+
+                if mesh.positions.len() == 0 {
+                    exists.push(false);
+
+                    continue;
+                }
+
+                exists.push(true);
+            }
+
+            println!(
+                "{:#?}",
+                exists
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(num, bool)| if *bool { Some(num) } else { None })
+                    .collect::<Vec<_>>()
+            )
+        }
+        Subcommands::ShapeModel {
+            resource_file,
+            shape_type,
+            index,
+            output,
+        } => {
+            let res_shape = ResourceShape::read(&mut BufReader::new(
+                File::open(resource_file.clone()).unwrap(),
+            ))
+            .unwrap();
+            let res_file = std::fs::read(resource_file).unwrap();
+
+            let shape = lookup_shape_type(shape_type, index, res_shape).unwrap();
+            let GenericResourceShape::Element(mut shape) = shape else {
+                panic!("Not a mesh!")
+            };
+
+            let mesh = shape.mesh(&res_file).unwrap();
+
+            let mut builder = GltfBuilder::new();
+
+            let ShapeMesh {
+                positions,
+                indices,
+                normals: _,
+                uvs: _,
+                color_params: _,
+            } = mesh;
+
+            if positions.len() == 0 {
+                println!("Empty model! Try again.");
+                return;
+            }
+            let material = builder.create_basic_material(
+                Some("Hair texture".to_string()),
+                [0.118, 0.102, 0.094, 1.000],
+            );
+
+            let positions: Vec<_> = positions
+                .into_iter()
+                .map(|x| x.map(Float16::as_f32))
+                .map(|[x, y, z, _]| point3_new(x, y, z))
+                .collect();
+
+            let indices: Vec<_> = indices
+                .chunks_exact(3)
+                .map(|s| <&[u16] as TryInto<[u16; 3]>>::try_into(s).unwrap()) // Thanks, Rust
+                .map(|[x, y, z]| Triangle::new(x.into(), y.into(), z.into()))
+                .collect();
+
+            let mesh = builder.create_simple_mesh(
+                Some("Mii Shape".to_string()),
+                &positions,
+                &indices,
+                // normals.clone().map(|v| v.into_flattened()).as_deref(),
+                // uvs.clone().map(|v| v.into_flattened()).as_deref(),
+                None,
+                None,
+                Some(material),
+            );
+
+            let mii_shape_node = builder.add_node(
+                Some("Mii Node".to_string()),
+                Some(mesh),
+                Some([0.0, 0.0, 0.0]),
+                None,
+                None,
+            );
+
+            builder.add_scene(Some("Mii Scene".to_string()), Some(vec![mii_shape_node]));
+
+            builder.export_glb(&output.to_str().unwrap()).unwrap();
+        }
     }
 }
 
@@ -145,4 +317,15 @@ fn lookup_texture_type(
         TextureType::Mustache => res_tex.mustache.get(index).copied(),
         TextureType::NoseLine => res_tex.noseline.get(index).copied(),
     }
+}
+
+fn lookup_shape_type(
+    shape_type: ArgShape,
+    index: usize,
+    resource_shape: ResourceShape,
+) -> Option<GenericResourceShape> {
+    resource_shape.index_by_shape(
+        Shape::try_from_primitive((shape_type).into()).unwrap(),
+        index,
+    )
 }
