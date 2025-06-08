@@ -1,14 +1,33 @@
-//! Very simple library for parsing `Char` data. Currently only supports the Nx `Char` format.
-//! In the future, multiple formats will be supported and a trait will allow
-//! for being generic over formats.
+//! Light library for parsing Mii character data.
+//!
+//! There are, roughly, two kinds of Mii data type.
+//! - `CharInfo`: an uncompressed format.
+//! - `StoreData`: a packed format. This is space minimized for transit (e.g. on the flash memory of an NFC toy.)
+//! - `CharData`: `StoreData` without the checksum footer.
+//! - _... there are more that this library does not implement._
+//!
+//! Supported by this library:
+//!
+//! | ..          | Ntr[^gen1]           | Rvl[^gen1]       | Ctr/Cafe    | Nx             |
+//! |-------------|---------------|-----------|-------------|----------------|
+//! | `CharInfo`  | ❌            | ❌        | ❌                           | [✅ `.charinfo`](NxCharInfo) |
+//! | `StoreData` |  ❌ | ❌ | [✅ `.ffsd`](CtrStoreData)   | ❌ |
+//! | `CoreData`  |  ❌| ❌ | ❌ | ❌ |
+//!
+//! [^gen1]: These formats are the same, apart from Ntr being little-endian and Rvl being big-endian.
 
-pub mod cafe;
+pub mod ctr;
+pub mod generic;
 pub mod nx;
 
-pub use cafe::CafeCharStoreData;
+pub use ctr::CtrStoreData;
 pub use nx::NxCharInfo;
+pub use rvl_ntr::NtrCharData;
+pub use rvl_ntr::NtrStoreData;
+pub use rvl_ntr::RvlCharData;
+pub use rvl_ntr::RvlStoreData;
 
-pub use binrw::{BinRead, NullWideString, binrw};
+pub use binrw::{binrw, BinRead, NullWideString};
 
 /// A UTF-16 String with a fixed length and non-enforced null termination.
 /// The string is allowed to reach the maximum length without a null terminator,
@@ -43,7 +62,7 @@ impl<const N: usize> FixedLengthWideString<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CafeCharStoreData, NxCharInfo};
+    use crate::{CtrStoreData, NxCharInfo};
     use binrw::BinRead;
     use std::{error::Error, fs::File};
 
@@ -67,16 +86,31 @@ mod tests {
     }
 
     #[test]
-    fn cafe_deser() -> R {
+    fn ctr_deser() -> R {
         let mut mii = File::open(format!(
             "{}/resources_here/j0.ffsd",
             std::env::var("CARGO_WORKSPACE_DIR").unwrap()
         ))?;
 
-        let mii = CafeCharStoreData::read(&mut mii)?;
+        let mii = CtrStoreData::read(&mut mii)?;
 
         assert_eq!(mii.name.to_string(), "Jo Null".to_string());
-        assert_eq!(mii.personal_info.favorite_color().value(), 8);
+        assert_eq!(mii.personal_info_2.favorite_color().value(), 8);
+
+        Ok(())
+    }
+
+    #[test]
+    fn rvl_deser() -> R {
+        let mut mii = File::open(format!(
+            "{}/resources_here/j0.ffsd",
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap()
+        ))?;
+
+        let mii = CtrStoreData::read(&mut mii)?;
+
+        assert_eq!(mii.name.to_string(), "Jo Null".to_string());
+        assert_eq!(mii.personal_info_2.favorite_color().value(), 8);
 
         Ok(())
     }

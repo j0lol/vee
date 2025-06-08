@@ -1,12 +1,10 @@
 use crate::FixedLengthWideString;
-use std::{fmt::Display, fs::read, io::Cursor};
-
 use bilge::prelude::*;
-use binrw::{BinRead, BinWrite, NullWideString, binrw};
+use binrw::{BinRead, BinWrite, binrw};
 use vee_parse_macros::bitfield;
 
 #[bitfield(32)]
-pub struct CharDataField {
+pub struct PersonalInfo1Field {
     pub char_version: u8,
     pub copyable: u1,
     pub ng_word: u1,
@@ -21,7 +19,7 @@ pub struct CharDataField {
 }
 
 #[bitfield(16)]
-pub struct PersonalInfoField {
+pub struct PersonalInfo2Field {
     pub gender: u1,
     pub birth_month: u4,
     pub birth_day: u5,
@@ -131,13 +129,13 @@ pub struct MoleField {
 
 #[binrw]
 #[derive(Debug)]
-pub struct CafeAuthorId {
+pub struct CtrAuthorId {
     pub data: [u8; 8],
 }
 
 #[binrw]
 #[derive(Debug)]
-pub struct CafeCreateId {
+pub struct CtrCreateId {
     pub data: [u8; 10],
 }
 
@@ -149,12 +147,12 @@ pub struct CafeCreateId {
 #[binrw]
 #[brw(little)]
 #[derive(Debug)]
-pub struct CafeCharStoreData {
-    pub char_data: CharDataField,
-    pub author_id: CafeAuthorId,
-    pub create_id: CafeCreateId,
+pub struct CtrStoreData {
+    pub personal_info_1: PersonalInfo1Field,
+    pub author_id: CtrAuthorId,
+    pub create_id: CtrCreateId,
     pub reserved: [u8; 2],
-    pub personal_info: PersonalInfoField,
+    pub personal_info_2: PersonalInfo2Field,
     pub name: FixedLengthWideString<10>,
     pub height: u8,
     pub build: u8,
