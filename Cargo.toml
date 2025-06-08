@@ -4,7 +4,7 @@ members = [
     # bevy viewer is on the backburner
     # "crates/bevy_viewer",
     "crates/lightweight_viewer", "crates/vee_models",
-    "crates/vee_parse", "crates/vee_resources",
+    "crates/vee_parse", "crates/vee_parse_macros", "crates/vee_resources",
     "crates/vee_wgpu",
     "crates/vfl",
     "crates/vfl-cli",
