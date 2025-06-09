@@ -1237,7 +1237,7 @@ dependencies = [
 
 [[package]]
 name = "lightweight_viewer"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "glam",
@@ -2887,7 +2887,7 @@ dependencies = [
 
 [[package]]
 name = "vee_models"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "glam",
@@ -2898,7 +2898,7 @@ dependencies = [
 
 [[package]]
 name = "vee_parse"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "bilge",
  "binrw",
@@ -2909,7 +2909,7 @@ dependencies = [
 
 [[package]]
 name = "vee_parse_macros"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "quote",
  "syn 2.0.101",
@@ -2917,7 +2917,7 @@ dependencies = [
 
 [[package]]
 name = "vee_resources"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "binrw",
  "bytemuck",
@@ -2932,7 +2932,7 @@ dependencies = [
 
 [[package]]
 name = "vee_wgpu"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "approx",
  "bytemuck",
@@ -2962,7 +2962,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vfl"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "vee_models",
  "vee_parse",
@@ -2972,7 +2972,7 @@ dependencies = [
 
 [[package]]
 name = "vfl-cli"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "clap",
  "mesh-tools",

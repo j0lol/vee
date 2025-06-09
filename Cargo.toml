@@ -3,15 +3,18 @@ resolver = "2"
 members = [
     # bevy viewer is on the backburner
     # "crates/bevy_viewer",
-    "crates/lightweight_viewer", "crates/vee_models",
-    "crates/vee_parse", "crates/vee_parse_macros", "crates/vee_resources",
+    "crates/lightweight_viewer",
+    "crates/vee_models",
+    "crates/vee_parse",
+    "crates/vee_parse_macros",
+    "crates/vee_resources",
     "crates/vee_wgpu",
     "crates/vfl",
     "crates/vfl-cli",
 ]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 authors = ["Jo Null <me@j0.lol>"]
 exclude = ["*.png", "*.glb", "*.dat"]

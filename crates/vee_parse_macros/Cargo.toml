@@ -10,6 +10,7 @@ exclude.workspace = true
 license.workspace = true
 repository.workspace = true
 readme.workspace = true
+description = "Helper library for `vee_parse`"
 
 [dependencies]
 quote = "1"
