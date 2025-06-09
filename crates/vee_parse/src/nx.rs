@@ -20,6 +20,9 @@ pub struct UuidVer4 {
 /// Bindings to the `.charinfo` format.
 /// This format is not used in transmission,
 /// so is not packed like other formats (e.g. Cafe, Revolution.)
+///
+/// For more information on the layout, check the ImHex struct pattern:
+/// [/testbed/nx_charinfo.hexpat](https://github.com/j0lol/vee/blob/main/testbed/nx_charinfo.hexpat)
 #[derive(Debug, Clone)]
 #[binrw]
 #[brw(little)]

@@ -19,5 +19,5 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/j0lol/vee"
 readme = "README.md"
 
-[workspace.lints.rustdoc]
+[workspace.lints.rust]
 missing_docs = "warn"

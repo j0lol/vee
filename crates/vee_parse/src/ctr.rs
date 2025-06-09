@@ -143,7 +143,7 @@ pub struct CtrCreateId {
 /// This structure has a lot of bitfields.
 /// These fields have been given speculative names.
 ///
-/// This format is commonly known as `.ffsd`.
+/// This format is known as `.ffsd`.
 #[binrw]
 #[brw(little)]
 #[derive(Debug)]
