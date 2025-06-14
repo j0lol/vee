@@ -1,4 +1,11 @@
-use crate::FixedLengthWideString;
+use crate::{
+    FixedLengthWideString, GenericChar,
+    generic::{
+        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, Glass, Hair, MetaData,
+        Mole, Mouth, Mustache, Nose, PositionY, Rotation, Scale, UniformScale,
+    },
+    seal::Sealant,
+};
 use bilge::prelude::*;
 use binrw::{BinRead, BinWrite, binrw};
 use paste::paste;
@@ -42,6 +49,26 @@ pub enum FavoriteColor {
     Black = 11,
     #[fallback]
     Invalid(u4),
+}
+
+impl FavoriteColor {
+    fn as_u8(&self) -> u8 {
+        match self {
+            FavoriteColor::Red => 0,
+            FavoriteColor::Orange => 1,
+            FavoriteColor::Yellow => 2,
+            FavoriteColor::YellowGreen => 3,
+            FavoriteColor::Green => 4,
+            FavoriteColor::Blue => 5,
+            FavoriteColor::SkyBlue => 6,
+            FavoriteColor::Pink => 7,
+            FavoriteColor::Purple => 8,
+            FavoriteColor::Brown => 9,
+            FavoriteColor::White => 10,
+            FavoriteColor::Black => 11,
+            FavoriteColor::Invalid(n) => n.as_u8(),
+        }
+    }
 }
 
 #[bitsize(1)]

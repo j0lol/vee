@@ -12,15 +12,14 @@
 //!
 //! Supported by this library:
 //!
-//! | ..          | Ntr[^gen1]           | Rvl[^gen1]       | Ctr/Cafe    | Nx             | WebStudio |
+//! | ...         | Ntr[^gen1]           | Rvl[^gen1]       | Ctr/Cafe    | Nx             | WebStudio |
 //! |-------------|----------------------|------------------|-------------|----------------|-----------|
-//! | `CharInfo`  | ❌                   | ❌        | ❌                           | [`.charinfo`](NxCharInfo) | .. |
-//! | `StoreData` |  [`.nsd`](NtrStoreData) | [`.rsd`](RvlStoreData) | [`.ffsd`](CtrStoreData)[^ff]   | ❌ | .. |
-//! | `CoreData`  | [`.ncd`](NtrCharData) | [`.rcd`](RvlCharData) | ❌ | ❌ | .. |
-//! | In-memory   | .. | .. | .. | .. | 🏗️[^mnms]  |
+//! | `CharInfo`  | ❌                   | ❌        | ❌                           | [`.charinfo`](NxCharInfo) | [`.mnms`](StudioCharInfo)[^mnms]<sup>🏗</sup> |
+//! | `StoreData` |  [`.nsd`](NtrStoreData) | [`.rsd`](RvlStoreData) | [`.ffsd`](CtrStoreData)[^ff]   | ❌ | ❌ |
+//! | `CoreData`  | [`.ncd`](NtrCharData) | [`.rcd`](RvlCharData) | ❌ | ❌ | ❌ |
 //! [^gen1]: These formats are the same, apart from Ntr being little-endian and Rvl being big-endian.
-//! [^ff]: The official format is Ca**f**e **F**ace **S**tore **D**ata, probably due to CFSD being taken by Ctr <sup>[src](https://github.com/HEYimHeroic/MiiDataFiles)</sup>.
-//! [^mnms]: Stored in the browser's `localStorage`. Often shared as a base64 string, or sometimes saved with the `.mnms` extension.
+//! [^ff]: The official format is Ca**f**e **F**ace **S**tore **D**ata, probably due to CFSD being taken by Ctr.
+//! [^mnms]: You could tenuously call this a `CharInfo`. Stored in the browser's `localStorage`. Often shared as a base64 string, or stored with the unofficial `.mnms` extension.
 //!
 //! # Conversion
 //!
@@ -53,11 +52,11 @@
 /// ┌──┴────────┐         │               │        │              │
 /// │           ├────────►└───────────────┘        └──────────────┘
 /// │  RSD,RCD  │                   ▲
-/// │           │                   │             ┌────────────────┐
-/// └───────────┘                   │             │                │
-///                                 └────────────►│  WsLocalStore  │
-///                                               │                │
-///                                               └────────────────┘
+/// │           │                   │            ┌──────────────────┐
+/// └───────────┘                   │            │                  │
+///                                 └───────────►│  StudioCharInfo  │
+///                                              │                  │
+///                                              └──────────────────┘
 /// ```
 /// </center>
 )]
@@ -83,11 +82,13 @@
 //! ```
 
 pub mod ctr;
+pub mod error;
 pub mod generic;
 pub mod nx;
 pub mod rvl_ntr;
 
-pub use binrw::{BinRead, NullWideString, binrw};
+use crate::error::CharConversionError;
+pub use binrw::{binrw, BinRead, NullWideString};
 pub use ctr::CtrStoreData;
 pub use generic::GenericChar;
 pub use nx::NxCharInfo;
@@ -95,6 +96,18 @@ pub use rvl_ntr::NtrCharData;
 pub use rvl_ntr::NtrStoreData;
 pub use rvl_ntr::RvlCharData;
 pub use rvl_ntr::RvlStoreData;
+
+fn u8_to_bool(int: u8, field: String) -> Result<bool, CharConversionError> {
+    match int {
+        0 => Ok(false),
+        1 => Ok(true),
+        _ => Err(CharConversionError::FieldOob(field)),
+    }
+}
+
+pub(crate) mod seal {
+    pub trait Sealant {}
+}
 
 /// A UTF-16 String with a fixed length and non-enforced null termination.
 /// The string is allowed to reach the maximum length without a null terminator,
@@ -129,7 +142,7 @@ impl<const N: usize> FixedLengthWideString<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CtrStoreData, NxCharInfo, RvlCharData, rvl_ntr::FavoriteColor};
+    use crate::{rvl_ntr::FavoriteColor, CtrStoreData, NxCharInfo, RvlCharData};
     use binrw::BinRead;
     use std::{error::Error, fs::File};
 

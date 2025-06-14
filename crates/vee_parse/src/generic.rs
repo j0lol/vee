@@ -1,3 +1,5 @@
+use crate::{error::CharConversionError, nx::UuidVer4, seal::Sealant};
+
 pub struct Position {
     pub x: u8,
     pub y: u8,
@@ -23,6 +25,11 @@ pub struct ScaleY {
     pub h: u8,
 }
 
+/// Scale and aspect, at the same time.
+pub struct UniformScale {
+    pub amount: u8,
+}
+
 /// The actual angle is somewhat dependant on what the shape is.
 /// Think of this as more of a... rotation difference.
 pub struct Rotation {
@@ -36,7 +43,7 @@ pub enum GenericColor {
 }
 
 /// Just so happens to be the same on every platform. Cool!
-pub struct FavoriteColor(usize);
+pub struct FavoriteColor(pub usize);
 
 pub struct Eye {
     pub ty: u8,
@@ -55,7 +62,7 @@ pub struct Eyebrow {
 pub struct Nose {
     pub ty: u8,
     pub pos: PositionY,
-    pub scale: ScaleX,
+    pub scale: UniformScale,
 }
 pub struct Mouth {
     pub ty: u8,
@@ -85,8 +92,8 @@ pub struct Beard {
 
 pub struct Mustache {
     pub ty: u8,
-    pub color: GenericColor,
-    pub scale: ScaleY,
+    pub pos: PositionY,
+    pub scale: ScaleX,
 }
 
 pub struct Glass {
@@ -106,6 +113,18 @@ pub enum Gender {
     Male,
     Female,
 }
+impl Gender {
+    pub fn from_bool(b: bool) -> Gender {
+        if b { Gender::Female } else { Gender::Male }
+    }
+    pub fn from_u8(u: u8) -> Result<Gender, CharConversionError> {
+        match u {
+            0_u8 => Ok(Gender::Male),
+            1_u8 => Ok(Gender::Female),
+            _ => Err(CharConversionError::FieldOob("gender".to_string())),
+        }
+    }
+}
 
 /// The body shape of the Char.
 pub struct Body {
@@ -119,10 +138,17 @@ pub struct MetaData {
     pub favorite_color: FavoriteColor,
 }
 
+pub struct RvlCreationData {/* todo */}
 pub struct CtrCreationData {/* todo */}
-pub struct NxCreationData {/* todo */}
+pub struct NxCreationData {
+    pub create_info: UuidVer4,
+    pub font_region: u8,
+    pub region_move: u8,
+}
 
 pub enum CreationData {
+    None,
+    Rvl(RvlCreationData),
     Ctr(CtrCreationData),
     Nx(NxCreationData),
 }
@@ -130,6 +156,7 @@ pub enum CreationData {
 /// Generic `Char` information.
 /// Names here are based on names in target-specific structs, but not representative.
 pub struct GenericChar {
+    /// Sometimes called "nickname"
     pub name: String,
 
     pub meta_data: MetaData,
@@ -145,4 +172,19 @@ pub struct GenericChar {
     pub mustache: Mustache,
     pub glass: Glass,
     pub mole: Mole,
+}
+
+/// This trait is sealed (you can't implement this on your own items.)
+pub trait AsGenericChar: Sealant {
+    /// Convert this representation into [GenericChar]
+    fn as_generic(&self) -> Result<GenericChar, CharConversionError>;
+}
+
+/// This trait is sealed (you can't implement this on your own items.)
+pub trait FromGenericChar: Sealant {
+    /// Hopefully the type you are implementing on.
+    type Output;
+
+    /// Make this char representation from [GenericChar]
+    fn from_generic(char: GenericChar) -> Self::Output;
 }

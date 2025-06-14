@@ -1,4 +1,12 @@
-use crate::FixedLengthWideString;
+use crate::error::CharConversionError;
+use crate::generic::{
+    AsGenericChar, Beard, Body, CreationData, CtrCreationData, Eye, Eyebrow, Faceline,
+    FavoriteColor, Gender, GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose,
+    Position, PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
+};
+use crate::nx::NxColor;
+use crate::seal::Sealant;
+use crate::{FixedLengthWideString, GenericChar, u8_to_bool};
 use bilge::prelude::*;
 use binrw::{BinRead, BinWrite, binrw};
 use vee_parse_macros::bitfield;
@@ -105,8 +113,8 @@ pub struct MouthPositionField {
 pub struct BeardField {
     pub beard_type: u3,
     pub beard_color: u3,
-    pub beard_scale: u4,
-    pub beard_y: u5,
+    pub mustache_scale: u4,
+    pub mustache_y: u5,
     pub padding_7: u1,
 }
 
@@ -133,6 +141,7 @@ pub struct CtrAuthorId {
     pub data: [u8; 8],
 }
 
+// FFLiCreateID
 #[binrw]
 #[derive(Debug)]
 pub struct CtrCreateId {
@@ -171,4 +180,127 @@ pub struct CtrStoreData {
     pub creator_name: FixedLengthWideString<10>,
     pub padding: u16,
     pub crc: u16,
+}
+
+fn cafe_color_generic(col: u8) -> GenericColor {
+    GenericColor::CafeTable(col.into())
+}
+
+impl Sealant for CtrStoreData {}
+
+impl AsGenericChar for CtrStoreData {
+    fn as_generic(&self) -> Result<GenericChar, CharConversionError> {
+        let char = GenericChar {
+            name: self.name.to_string(),
+
+            creation_data: CreationData::Ctr(CtrCreationData {}),
+            body: Body {
+                gender: Gender::from_u8(self.personal_info_2.gender().as_u8())?,
+                height: self.height,
+                build: self.build,
+            },
+            faceline: Faceline {
+                ty: self.face.face_type().as_u8(),
+                color: cafe_color_generic(self.face.face_color().as_u8()),
+                wrinkle_ty: self.face.face_texture().as_u8(),
+                makeup_ty: self.face.face_makeup().as_u8(),
+            },
+            hair: Hair {
+                ty: self.hair.hair_type(),
+                color: cafe_color_generic(self.hair.hair_color().as_u8()),
+                flip: u8_to_bool(self.hair.hair_flip().as_u8(), "hair::flip".to_string())?,
+            },
+            eye: Eye {
+                ty: self.eye.eye_type().as_u8(),
+                color: cafe_color_generic(self.eye.eye_color().as_u8()),
+                pos: Position {
+                    x: self.eye_position.eye_x().as_u8(),
+                    y: self.eye_position.eye_y().as_u8(),
+                },
+                scale: ScaleY {
+                    h: self.eye.eye_scale().as_u8(),
+                },
+                rotation: Rotation {
+                    ang: self.eye_position.eye_rotate().as_u8(),
+                },
+            },
+            eyebrow: Eyebrow {
+                ty: self.eyebrow.eyebrow_type().as_u8(),
+                color: cafe_color_generic(self.eyebrow.eyebrow_color().as_u8()),
+                pos: Position {
+                    x: self.eyebrow_position.eyebrow_x().as_u8(),
+                    y: self.eyebrow_position.eyebrow_y().as_u8(),
+                },
+                scale: Scale {
+                    w: self.eyebrow.eyebrow_scale().as_u8(),
+                    h: self.eyebrow.eyebrow_aspect().as_u8(),
+                },
+                rotation: Rotation {
+                    ang: self.eyebrow_position.eyebrow_rotate().as_u8(),
+                },
+            },
+            nose: Nose {
+                ty: self.nose.nose_type().as_u8(),
+                pos: PositionY {
+                    y: self.nose.nose_y().as_u8(),
+                },
+                scale: UniformScale {
+                    amount: self.nose.nose_scale().as_u8(),
+                },
+            },
+            mouth: Mouth {
+                ty: self.mouth.mouth_type().as_u8(),
+                color: cafe_color_generic(self.mouth.mouth_color().as_u8()),
+                pos: PositionY {
+                    y: self.mouth_position.mouth_y().as_u8(),
+                },
+                scale: Scale {
+                    w: self.mouth.mouth_scale().as_u8(),
+                    h: self.mouth.mouth_aspect().as_u8(),
+                },
+            },
+            beard: Beard {
+                ty: self.beard.beard_type().as_u8(),
+                color: cafe_color_generic(self.beard.beard_color().as_u8()),
+            },
+            mustache: Mustache {
+                ty: self.mouth_position.mustache_type().as_u8(),
+                pos: PositionY {
+                    y: self.beard.mustache_y().as_u8(),
+                },
+                scale: ScaleX {
+                    w: self.beard.mustache_scale().as_u8(),
+                },
+            },
+            glass: Glass {
+                ty: self.glass.glass_type().as_u8(),
+                color: cafe_color_generic(self.glass.glass_color().as_u8()),
+                pos: PositionY {
+                    y: self.glass.glass_y().as_u8(),
+                },
+                scale: ScaleX {
+                    w: self.glass.glass_scale().as_u8(),
+                },
+            },
+            mole: Mole {
+                ty: self.mole.mole_type().as_u8(),
+                pos: Position {
+                    x: self.mole.mole_x().as_u8(),
+                    y: self.mole.mole_y().as_u8(),
+                },
+                scale: ScaleX {
+                    w: self.mole.mole_scale().as_u8(),
+                },
+            },
+            meta_data: MetaData {
+                special: {
+                    println!("Warn: Special flag is NOT being read. Placeholder value used.");
+                    false
+                },
+                favorite_color: FavoriteColor(self.personal_info_2.favorite_color().as_usize()),
+            },
+        };
+
+        Ok(char)
+    }
 }

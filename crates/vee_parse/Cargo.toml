@@ -17,6 +17,7 @@ binrw = "0.15"
 paste = "1"
 vee_parse_macros = { path = "../vee_parse_macros", version = "0.2.0" }
 svgbobdoc = { version = "0.3", features = ["enable"] }
+thiserror = "2"
 
 [lints]
 workspace = true
