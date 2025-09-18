@@ -19,11 +19,7 @@ pub(crate) fn inflate_bytes(bytes: &[u8]) -> io::Result<Vec<u8>> {
 
 mod cafe {
     use vee_parse::BinRead;
-    #[derive(BinRead, Clone, Copy, Debug)]
-    enum EitherResourceTextureHeader {
-        Cafe(CafeResourceTextureHeader),
-        Arch(ArchResourceTextureHeader),
-    }
+
     /// f_f_li_resource_header
     ///
     /// Shape/texture resource format for FFL.
@@ -37,14 +33,30 @@ mod cafe {
     /// Other than shapes/textures, this file also contains
     /// transform vectors for each faceline and hair shape.
     #[derive(BinRead, Clone, Copy, Debug)]
-    #[br(big, magic = b"FFRA")]
+    #[br(big, magic = b"FFRA", assert(unknown[11] == 0x0))]
     pub struct CafeResourceHeader {
         version: u32,
         uncompress_buffer_size: u32,
         expanded_buffer_size: u32,
         is_expand: u32,
 
-        texture_data: EitherResourceTextureHeader,
+        texture_data: CafeResourceTextureHeader,
+        shape_data: CafeResourceShapeHeader,
+
+        unknown: [u32; 12]
+    }
+
+    /// Arch (Miitomo) Resources are notably different during parsing
+    /// while being derivative of [CafeResourceHeader].
+    #[derive(BinRead, Clone, Copy, Debug)]
+    #[br(big, magic = b"FFRA", assert(unknown[11] == 0x0))]
+    pub struct ArchResourceHeader {
+        version: u32,
+        uncompress_buffer_size: u32,
+        expanded_buffer_size: u32,
+        is_expand: u32,
+
+        texture_data: ArchResourceTextureHeader,
         shape_data: CafeResourceShapeHeader,
 
         unknown: [u32; 12]
@@ -147,7 +159,7 @@ mod cafe {
         use std::fs::File;
         use std::io::BufReader;
         use binrw::BinRead;
-        use crate::cafe::CafeResourceHeader;
+        use crate::cafe::{ArchResourceHeader, CafeResourceHeader};
 
 
         #[test]
@@ -157,8 +169,7 @@ mod cafe {
                 std::env::var("CARGO_WORKSPACE_DIR").unwrap()
             ))?);
 
-            let _ = CafeResourceHeader::read(&mut bin)?;
-
+            let _ = ArchResourceHeader::read(&mut bin)?;
 
             Ok(())
         }
