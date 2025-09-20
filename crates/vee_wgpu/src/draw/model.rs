@@ -1,8 +1,8 @@
-use crate::draw::texture::{draw_faceline, draw_glasses, draw_hat, draw_mask, draw_noseline};
 use crate::draw::ModelOpt;
+use crate::draw::texture::{draw_faceline, draw_glasses, draw_hat, draw_mask, draw_noseline};
 use crate::texture::TextureBundle;
 use crate::{Model3d, ProgramState};
-use glam::{uvec2, vec3, vec4, UVec2, Vec3};
+use glam::{UVec2, Vec3, uvec2, vec3, vec4};
 use std::iter::zip;
 use vee_models::model::{GenericModel3d, Vertex};
 use vee_parse::NxCharInfo;
@@ -167,10 +167,19 @@ pub(crate) fn mesh_to_model(
 
     let indices = d.indices.into_iter().map(u32::from).collect();
 
+    const HIGHLIGHT_BLUE: [f32; 4] = [0.7, 0.7, 1.0, 0.5];
+
+    const FULL_BLUE: [f32; 4] = [0.7, 0.7, 1.0, 1.0];
+
     GenericModel3d {
         vertices,
         indices,
         color: match shape {
+            // Shape::Mask => HIGHLIGHT_BLUE.into(),
+            // Shape::FaceLine => HIGHLIGHT_BLUE.into(),
+            // Shape::Glasses => HIGHLIGHT_BLUE.into(),
+            // Shape::HatNormal => [1.0, 1.0, 1.0, 0.1].into(),
+            // Shape::ForeheadNormal => FULL_BLUE.into(),
             Shape::HairNormal | Shape::Beard | Shape::HatNormal => {
                 color::nx::linear::COMMON_COLOR[color].into()
             }

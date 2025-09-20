@@ -44,7 +44,7 @@ fn render_mask_eyebrows() {
     let image = e.render.output_texture(&e.texture, e.encoder);
 
     image
-        .save(concat!(
+        .save(format!(
             std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
             "/test_data/outputs/mask_brows.png",
         ))

@@ -1,17 +1,17 @@
 use crate::camera::{Camera, CameraUniform};
 use crate::{DARK_REBECCA_PURPLE, FACES};
-use glam::{uvec2, UVec2, Vec3};
+use glam::{UVec2, Vec3, uvec2};
 use nest_struct::nest_struct;
 use std::rc::Rc;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
+use vfl::impl_wgpu::ProgramState;
 use vfl::impl_wgpu::draw::CharModel;
 use vfl::impl_wgpu::texture::TextureBundle;
-use vfl::impl_wgpu::ProgramState;
 use vfl::parse::{BinRead, NxCharInfo};
 use vfl::res::shape::ResourceShape;
 use vfl::res::tex::ResourceTexture;
-use wgpu::{util::DeviceExt, Backends, Features};
+use wgpu::{Backends, Features, util::DeviceExt};
 use winit::window::Window;
 
 /// Yeah, yeah.
@@ -84,11 +84,13 @@ impl State {
             .unwrap();
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
-                required_features: Features::SHADER_F16,
+                required_features: Features::POLYGON_MODE_LINE,
                 ..Default::default()
             })
             .await
             .unwrap();
+
+        // panic!("{:#?}", device.features());
 
         let size = window.inner_size();
         let size = uvec2(size.width, size.height);
@@ -110,16 +112,18 @@ impl State {
             FACES[0]
         ))
         .unwrap();
-        let char_info = NxCharInfo::read(&mut char_info).unwrap();
+        let mut char_info = NxCharInfo::read(&mut char_info).unwrap();
+        // char_info.hair_type = 45;
+        // dbg!(char_info.hair_type);
 
         let camera = Camera {
-            eye: (0.0, 25.0, 100.0).into(),
+            eye: (200.0, 250.0, 700.0).into(),
             target: (0.0, 25.0, 0.0).into(),
             up: Vec3::Y,
             aspect: size.x as f32 / size.y as f32,
-            fov_y_radians: FRAC_PI_2,
-            znear: 0.1,
-            zfar: 10000.0,
+            fov_y_radians: 0.26, // 15deg
+            znear: 100.0,
+            zfar: 1_000.0,
         };
 
         let mut camera_uniform = CameraUniform::new();
@@ -313,13 +317,14 @@ impl State {
     }
 
     pub fn update(&mut self) {
+        return;
         let forward = self.camera.target - self.camera.eye;
         let forward_norm = forward.normalize();
         let forward_mag = forward.length();
 
         let right = forward_norm.cross(self.camera.up);
 
-        const CAMERA_ROTATE_SPEED: f32 = 1.0;
+        const CAMERA_ROTATE_SPEED: f32 = 0.0;
         self.camera.eye =
             self.camera.target - (forward + right * CAMERA_ROTATE_SPEED).normalize() * forward_mag;
 
