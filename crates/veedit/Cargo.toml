@@ -1,0 +1,16 @@
+[package]
+name = "veedit"
+version.workspace = true
+edition = "2024"
+
+[dependencies]
+pollster = "0.4"
+wgpu = "25.0.0"
+egui = "0.32"
+egui-wgpu = "0.32"
+egui-winit = { version = "0.32", default-features = false }
+winit = { version = "0.30" }
+vfl = { path = "../vfl", features = ["res", "wgpu"] }
+glam = { version = "0.30", features = ["bytemuck"] }
+bytemuck = "1.23"
+nest_struct = "0.5"
