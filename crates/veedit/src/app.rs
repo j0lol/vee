@@ -20,7 +20,7 @@ impl ApplicationHandler for App {
         // Create window object
         let window = Arc::new(
             event_loop
-                .create_window(Window::default_attributes().with_title("Vee(FL)-Testing"))
+                .create_window(Window::default_attributes().with_title("VeEDIT"))
                 .unwrap(),
         );
 
@@ -37,10 +37,6 @@ impl ApplicationHandler for App {
             .egui
             .winit_state
             .on_window_event(&state.window, &event);
-
-        if consumed.consumed {
-            state.char_remake = true;
-        }
 
         match event {
             WindowEvent::CloseRequested => {

@@ -1,5 +1,7 @@
 use crate::camera::{Camera, CameraUniform};
 use crate::{DARK_REBECCA_PURPLE, FACES};
+use binrw::BinWrite;
+use egui::{Color32, Stroke, vec2};
 use glam::{UVec2, Vec3, uvec2};
 use nest_struct::nest_struct;
 use std::rc::Rc;
@@ -8,7 +10,8 @@ use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
 use vfl::impl_wgpu::ProgramState;
 use vfl::impl_wgpu::draw::CharModel;
 use vfl::impl_wgpu::texture::TextureBundle;
-use vfl::parse::{BinRead, NxCharInfo};
+use vfl::parse::generic::{AsGenericChar, FromGenericChar};
+use vfl::parse::{BinRead, CtrStoreData, NtrCharData, NtrStoreData, NxCharInfo};
 use vfl::res::shape::ResourceShape;
 use vfl::res::tex::ResourceTexture;
 use wgpu::{Backends, Features, util::DeviceExt};
@@ -38,6 +41,19 @@ pub fn char_model() -> MutexGuard<'static, CharModel> {
     CHAR_MODEL.get().unwrap().lock().unwrap()
 }
 
+#[derive(PartialEq)]
+enum UiTab {
+    Info,
+    Head,
+    Hair,
+    Brow,
+    Eye,
+    Nose,
+    Mouth,
+    Extra,
+    Body,
+}
+
 /// `wgpu` requires a LOT of state for rendering. It's kind of annoying.
 /// We put our own stuff in here too (camera, resource data, etc.)
 ///
@@ -61,6 +77,7 @@ pub struct State {
         pub wgpu_renderer: egui_wgpu::Renderer,
         frame_started: bool,
         scale_factor: f32,
+        tab: UiTab,
     },
     pub camera: CameraState! {
         pub this: Camera,
@@ -203,12 +220,17 @@ impl State {
 
         let egui = {
             let egui_ctx = egui::Context::default();
+
+            let mut fonts = egui::FontDefinitions::default();
+            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+            egui_ctx.set_fonts(fonts);
+
             let winit_state = egui_winit::State::new(
                 egui_ctx,
                 egui::ViewportId::ROOT,
                 &window,
                 Some(window.scale_factor() as f32),
-                None,
+                Some(winit::window::Theme::Light),
                 Some(2 * 1024),
             );
             let wgpu_renderer = egui_wgpu::Renderer::new(&device, surface_format, None, 1, false);
@@ -218,6 +240,7 @@ impl State {
                 wgpu_renderer,
                 frame_started: false,
                 scale_factor: 1.0,
+                tab: UiTab::Info,
             }
         };
 
@@ -318,40 +341,405 @@ impl State {
             egui::Window::new("Editor")
                 .resizable(true)
                 .vscroll(true)
+                .hscroll(false)
                 .default_open(true)
                 .show(ctx, |ui| {
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.eye_type, 0..=61).text("Eye type"),
-                    );
+                    let mut dirty = || self.char_remake = true;
 
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.eyebrow_type, 0..=23)
-                            .text("Eyebrow type"),
-                    );
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Info, "info");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Head, "head");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Hair, "hair");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Brow, "brow");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Eye, "eye");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Nose, "nose");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Mouth, "mouth");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Extra, "extra");
+                        ui.selectable_value(&mut self.egui.tab, UiTab::Body, "body");
+                    });
 
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.mouth_type, 0..=36)
-                            .text("Mouth Type"),
-                    );
+                    ui.separator();
 
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.nose_scale, 0..=255)
-                            .text("Nose Scale"),
-                    );
+                    let mut slider = |slider: egui::Slider| {
+                        if ui.add(slider).changed() {
+                            dirty()
+                        }
+                    };
+                    match self.egui.tab {
+                        UiTab::Info => {
+                            use rfd::FileDialog;
 
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.eyebrow_scale, 0..=255)
-                            .text("Eyebrow Scale"),
-                    );
+                            ui.horizontal(|ui| {
+                                ui.label("Import...");
+                                if ui.button("CtrStoreData").clicked() {
+                                    let file = FileDialog::new()
+                                        .add_filter("FFSD", &["ffsd, cfsd, csd"])
+                                        .pick_file();
 
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.eye_scale, 0..=255).text("Eye Scale"),
-                    );
+                                    if let Some(file) = file {
+                                        let mut csd = File::open(file).unwrap();
+                                        let csd = CtrStoreData::read(&mut csd).unwrap();
+                                        let char = csd.as_generic().unwrap();
 
-                    ui.add(
-                        egui::Slider::new(&mut self.char_info.mouth_scale, 0..=255)
-                            .text("Mouth Scale"),
-                    );
+                                        self.char_info = NxCharInfo::from_generic(char);
+                                        self.char_remake = true;
+                                    }
+                                }
+
+                                if ui.button("CharInfo").clicked() {
+                                    let file = FileDialog::new()
+                                        .add_filter("charinfo", &["charinfo"])
+                                        .pick_file();
+
+                                    if let Some(file) = file {
+                                        let mut char_info = File::open(file).unwrap();
+                                        self.char_info = NxCharInfo::read(&mut char_info).unwrap();
+                                        self.char_remake = true;
+                                    }
+                                }
+                            });
+
+                            ui.horizontal(|ui| {
+                                ui.label("Export...");
+
+                                if ui.button("CharInfo").clicked() {
+                                    let file = FileDialog::new()
+                                        .set_file_name("My Character.charinfo")
+                                        .save_file();
+                                    if let Some(file) = file {
+                                        let mut file = File::create(file).unwrap();
+                                        self.char_info.write(&mut file).unwrap();
+                                    }
+                                }
+                            });
+
+                            ui.separator();
+
+                            ui.horizontal(|ui| {
+                                ui.label("Name");
+                                ui.text_edit_singleline(&mut self.char_info.nickname.to_string()); // lol obviously not editable
+                            });
+
+                            egui::ComboBox::from_label("Gender")
+                                .selected_text(match self.char_info.gender {
+                                    0 => "Male",
+                                    1 => "Female",
+                                    _ => "Invalid",
+                                })
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.char_info.gender, 0, "Male");
+                                    ui.selectable_value(&mut self.char_info.gender, 1, "Female");
+                                });
+
+                            let favcol = &mut self.char_info.favorite_color.0;
+                            egui::ComboBox::from_label("Favorite Color")
+                                .width(64.0)
+                                .selected_text(format!("{}", favcol))
+                                .show_ui(ui, |ui| {
+                                    let palette_size = vec2(48.0, 20.0);
+                                    let colors = vfl::res::color::nx::linear::FAVORITE_COLOR;
+
+                                    egui::Grid::new("some_unique_id")
+                                        .spacing(vec2(4.0, 4.0))
+                                        .striped(true)
+                                        .show(ui, |ui| {
+                                            let mut palette = |index| {
+                                                let col = colors[index as usize];
+                                                let sel = *favcol == index;
+                                                if index == 6 {
+                                                    ui.end_row();
+                                                }
+                                                if ui
+                                                    .add(
+                                                        egui::Button::new("")
+                                                            .selected(sel)
+                                                            .stroke(if sel {
+                                                                Stroke::new(
+                                                                    2.0,
+                                                                    Color32::from_rgb(75, 75, 200),
+                                                                )
+                                                            } else if index == 10 {
+                                                                Stroke::new(
+                                                                    1.0,
+                                                                    Color32::from_gray(50),
+                                                                )
+                                                            } else if index == 11 {
+                                                                Stroke::new(
+                                                                    1.0,
+                                                                    Color32::from_gray(200),
+                                                                )
+                                                            } else {
+                                                                Stroke::NONE
+                                                            })
+                                                            .min_size(palette_size)
+                                                            .fill(
+                                                                egui::Rgba::from_rgba_premultiplied(
+                                                                    col[0], col[1], col[2], 1.0,
+                                                                ),
+                                                            ),
+                                                    )
+                                                    .clicked()
+                                                {
+                                                    *favcol = index;
+                                                }
+                                            };
+
+                                            for i in 0..12 {
+                                                palette(i);
+                                            }
+                                        });
+                                });
+                        }
+                        UiTab::Head => {
+                            ui.label(
+                                egui::RichText::new("Technically, its called 'Faceline'...")
+                                    .italics()
+                                    .weak(),
+                            );
+
+                            // cant use ui AND the slider closure at the same time. sorry.
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.faceline_type, 0..=11)
+                                        .text("Head type"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.faceline_color.0, 0..=9)
+                                        .text("Skin color"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.faceline_make, 0..=11)
+                                        .text("Makeup type"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.faceline_wrinkle, 0..=11)
+                                        .text("Wrinkle type"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+                        }
+                        UiTab::Hair => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.hair_type, 0..=131)
+                                    .text("Hair type"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.hair_color.0, 0..=99)
+                                    .text("Hair color"),
+                            );
+
+                            let mut flip = self.char_info.hair_flip == 1;
+
+                            if ui.checkbox(&mut flip, "Hair flip").changed() {
+                                self.char_info.hair_flip = flip as u8;
+                                dirty();
+                            }
+                        }
+                        UiTab::Brow => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_type, 0..=23)
+                                    .text("Eyebrow type"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_color.0, 0..=99)
+                                    .text("Eyebrow color"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_x, 0..=20)
+                                    .text("Eyebrow PosX"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_y, 0..=20)
+                                    .text("Eyebrow PosY"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_rotate, 0..=20)
+                                    .text("Eyebrow Rotate"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_scale, 0..=255)
+                                    .text("Eyebrow Scale"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eyebrow_aspect, 0..=255)
+                                    .text("Eyebrow Aspect"),
+                            );
+                            //
+                        }
+                        UiTab::Eye => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_type, 0..=61)
+                                    .text("Eye type"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_color.0, 0..=99)
+                                    .text("Eye color"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_x, 0..=20)
+                                    .text("Eye PosX"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_y, 0..=20)
+                                    .text("Eye PosY"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_rotate, 0..=20)
+                                    .text("Eye Rotate"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_scale, 0..=255)
+                                    .text("Eye Scale"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.eye_aspect, 0..=255)
+                                    .text("Eye Aspect"),
+                            );
+                        }
+                        UiTab::Nose => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.nose_type, 0..=17)
+                                    .text("Nose Type"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.nose_y, 0..=20)
+                                    .text("Nose PosY"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.nose_scale, 0..=10)
+                                    .text("Nose Scale"),
+                            );
+                        }
+                        UiTab::Mouth => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mouth_type, 0..=36)
+                                    .text("Mouth Type"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mouth_color.0, 0..=99)
+                                    .text("Mouth Color (lip color?)"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mouth_y, 0..=20)
+                                    .text("Mouth PosY"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mouth_scale, 0..=10)
+                                    .text("Mouth Scale"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mouth_aspect, 0..=10)
+                                    .text("Mouth Aspect"),
+                            );
+                        }
+                        UiTab::Extra => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.glass_type, 0..=19)
+                                    .text("Glass Type"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.glass_color.0, 0..=99)
+                                    .text("Glass Color"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.glass_y, 0..=10)
+                                    .text("Glass PosY"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.glass_scale, 0..=10)
+                                    .text("Glass Scale"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mustache_type, 0..=5)
+                                    .text("Mustache Type"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mustache_y, 0..=10)
+                                    .text("Mustache PosY"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.mustache_scale, 0..=10)
+                                    .text("Mustache Scale"),
+                            );
+
+                            slider(
+                                egui::Slider::new(&mut self.char_info.beard_type, 0..=5)
+                                    .text("Beard Type"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.beard_color.0, 0..=99)
+                                    .text("Beard Color"),
+                            );
+
+                            let mut mole = self.char_info.mole_type == 1;
+                            if ui.checkbox(&mut mole, "Mole").changed() {
+                                self.char_info.mole_type = mole as u8;
+                                dirty();
+                            }
+
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.mole_x, 0..=15)
+                                        .text("Mole PosX"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.mole_y, 0..=15)
+                                        .text("Mole PosY"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+
+                            if ui
+                                .add(
+                                    egui::Slider::new(&mut self.char_info.mole_scale, 0..=8)
+                                        .text("Mole Scale"),
+                                )
+                                .changed()
+                            {
+                                dirty()
+                            }
+                        }
+                        UiTab::Body => {
+                            slider(
+                                egui::Slider::new(&mut self.char_info.height, 0..=255)
+                                    .text("Height"),
+                            );
+                            slider(
+                                egui::Slider::new(&mut self.char_info.build, 0..=255).text("Build"),
+                            );
+                        }
+                    }
                 });
         });
 
@@ -441,6 +829,8 @@ impl State {
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = uvec2(new_size.width, new_size.height);
+
+        self.camera.this.aspect = self.size.x as f32 / self.size.y as f32;
 
         // reconfigure the surface
         self.configure_surface();
