@@ -2,9 +2,9 @@ use crate::{
     FixedLengthWideString, GenericChar,
     error::CharConversionError,
     generic::{
-        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, FavoriteColor, Gender,
-        GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose, NxCreationData, Position,
-        PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
+        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, FavoriteColor,
+        FromGenericChar, Gender, GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose,
+        NxCreationData, Position, PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
     },
     seal::Sealant,
     u8_to_bool,
@@ -122,7 +122,10 @@ impl AsGenericChar for NxCharInfo {
                     x: self.eye_x,
                     y: self.eye_y,
                 },
-                scale: ScaleY { h: self.eye_aspect },
+                scale: Scale {
+                    w: self.eye_scale,
+                    h: self.eye_aspect,
+                },
                 rotation: Rotation {
                     ang: self.eye_rotate,
                 },
@@ -135,11 +138,11 @@ impl AsGenericChar for NxCharInfo {
                     y: self.eyebrow_y,
                 },
                 scale: Scale {
-                    w: self.eye_scale,
-                    h: self.eye_aspect,
+                    w: self.eyebrow_scale,
+                    h: self.eyebrow_aspect,
                 },
                 rotation: Rotation {
-                    ang: self.eye_rotate,
+                    ang: self.eyebrow_rotate,
                 },
             },
             nose: Nose {
@@ -195,5 +198,68 @@ impl AsGenericChar for NxCharInfo {
                 region_move: self.region_move,
             }),
         })
+    }
+}
+
+impl FromGenericChar for NxCharInfo {
+    type Output = NxCharInfo;
+
+    fn from_generic(char: GenericChar) -> Self::Output {
+        let plc = NxColor(0);
+
+        NxCharInfo {
+            create_info: UuidVer4 { idc: [0; 16] },
+            nickname: FixedLengthWideString::from_string(char.name),
+            font_region: 0,
+            favorite_color: NxColor(char.meta_data.favorite_color.0 as u8),
+            gender: char.body.gender.as_u8(),
+            height: char.body.height,
+            build: char.body.build,
+            is_special: char.meta_data.special as u8,
+            region_move: 0,
+            faceline_type: char.faceline.ty,
+            faceline_color: plc,
+            faceline_wrinkle: char.faceline.wrinkle_ty,
+            faceline_make: char.faceline.makeup_ty,
+            hair_type: char.hair.ty,
+            hair_color: plc,
+            hair_flip: char.hair.flip as u8,
+            eye_type: char.eye.ty,
+            eye_color: plc,
+            eye_scale: char.eye.scale.w,
+            eye_aspect: char.eye.scale.h,
+            eye_rotate: char.eye.rotation.ang,
+            eye_x: char.eye.pos.x,
+            eye_y: char.eye.pos.y,
+            eyebrow_type: char.eyebrow.ty,
+            eyebrow_color: plc,
+            eyebrow_scale: char.eyebrow.scale.w,
+            eyebrow_aspect: char.eyebrow.scale.h,
+            eyebrow_rotate: char.eyebrow.rotation.ang,
+            eyebrow_x: char.eyebrow.pos.x,
+            eyebrow_y: char.eyebrow.pos.y,
+            nose_type: char.nose.ty,
+            nose_scale: char.nose.scale.amount,
+            nose_y: char.nose.pos.y,
+            mouth_type: char.mouth.ty,
+            mouth_color: plc,
+            mouth_scale: char.mouth.scale.w,
+            mouth_aspect: char.mouth.scale.h,
+            mouth_y: char.mouth.pos.y,
+            beard_color: plc,
+            beard_type: char.beard.ty,
+            mustache_type: char.mustache.ty,
+            mustache_scale: char.mustache.scale.w,
+            mustache_y: char.mustache.pos.y,
+            glass_type: char.glass.ty,
+            glass_color: plc,
+            glass_scale: char.glass.scale.w,
+            glass_y: char.glass.pos.y,
+            mole_type: char.mole.ty,
+            mole_scale: char.mole.scale.w,
+            mole_x: char.mole.pos.x,
+            mole_y: char.mole.pos.x,
+            reserved: 0,
+        }
     }
 }

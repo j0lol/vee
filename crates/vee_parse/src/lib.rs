@@ -43,17 +43,17 @@
 ///                                               ┌────────────────┐
 ///                                               │                │
 ///                                 ┌────────────►│  CtrStoreData  │
-/// ┌───────────┐                   │             │                │
-/// │           │                   │             └────────────────┘
-/// │  NSD,NCD  │                   ▼
-/// │           ├────────►┌───────────────┐        ┌──────────────┐
-/// └────────┬──┘         │               │        │              │
-///    ▲     ▼            │  GenericChar  │◄──────►│  NxCharInfo  │
-/// ┌──┴────────┐         │               │        │              │
-/// │           ├────────►└───────────────┘        └──────────────┘
-/// │  RSD,RCD  │                   ▲
-/// │           │                   │            ┌──────────────────┐
-/// └───────────┘                   │            │                  │
+///                                 │             │                │
+/// ┌────────────────┐              │             └────────────────┘
+/// │  NtrCoreData,  │              ▼
+/// │  NtrStoreData  ├───►┌───────────────┐        ┌──────────────┐
+/// └─────────────┬──┘    │               │        │              │
+///    ▲          ▼       │  GenericChar  │◄──────►│  NxCharInfo  │
+/// ┌──┴─────────────┐    │               │        │              │
+/// │  RvlCoreData,  ├───►└───────────────┘        └──────────────┘
+/// │  RvlStoreData  │              ▲
+/// └────────────────┘              │            ┌──────────────────┐
+///                                 │            │                  │
 ///                                 └───────────►│  StudioCharInfo  │
 ///                                              │                  │
 ///                                              └──────────────────┘
@@ -88,7 +88,7 @@ pub mod nx;
 pub mod rvl_ntr;
 
 use crate::error::CharConversionError;
-pub use binrw::{binrw, BinRead, NullWideString};
+pub use binrw::{BinRead, NullWideString, binrw};
 pub use ctr::CtrStoreData;
 pub use generic::GenericChar;
 pub use nx::NxCharInfo;
@@ -117,6 +117,13 @@ pub(crate) mod seal {
 #[repr(transparent)]
 pub struct FixedLengthWideString<const CHARS: usize>(pub [u16; CHARS]);
 
+impl<const N: usize> FixedLengthWideString<N> {
+    fn from_string(str: String) -> FixedLengthWideString<N> {
+        let vec: Vec<u16> = str.encode_utf16().collect();
+        FixedLengthWideString(vec.try_into().unwrap_or([0; N]))
+    }
+}
+
 impl<const N: usize> std::fmt::Debug for FixedLengthWideString<N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "FixedLengthWideString(\"{}\")", self)
@@ -142,7 +149,7 @@ impl<const N: usize> FixedLengthWideString<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{rvl_ntr::FavoriteColor, CtrStoreData, NxCharInfo, RvlCharData};
+    use crate::{CtrStoreData, NxCharInfo, RvlCharData, rvl_ntr::FavoriteColor};
     use binrw::BinRead;
     use std::{error::Error, fs::File};
 

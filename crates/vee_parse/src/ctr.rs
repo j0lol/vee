@@ -217,8 +217,9 @@ impl AsGenericChar for CtrStoreData {
                     x: self.eye_position.eye_x().as_u8(),
                     y: self.eye_position.eye_y().as_u8(),
                 },
-                scale: ScaleY {
-                    h: self.eye.eye_scale().as_u8(),
+                scale: Scale {
+                    w: self.eye.eye_scale().as_u8(),
+                    h: self.eye.eye_aspect().as_u8(),
                 },
                 rotation: Rotation {
                     ang: self.eye_position.eye_rotate().as_u8(),

@@ -49,7 +49,7 @@ pub struct Eye {
     pub ty: u8,
     pub color: GenericColor,
     pub pos: Position,
-    pub scale: ScaleY,
+    pub scale: Scale,
     pub rotation: Rotation,
 }
 pub struct Eyebrow {
@@ -122,6 +122,12 @@ impl Gender {
             0_u8 => Ok(Gender::Male),
             1_u8 => Ok(Gender::Female),
             _ => Err(CharConversionError::FieldOob("gender".to_string())),
+        }
+    }
+    pub fn as_u8(self) -> u8 {
+        match self {
+            Gender::Male => 0,
+            Gender::Female => 1,
         }
     }
 }
