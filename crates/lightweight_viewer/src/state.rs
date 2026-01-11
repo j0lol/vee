@@ -1,17 +1,17 @@
 use crate::camera::{Camera, CameraUniform};
 use crate::{DARK_REBECCA_PURPLE, FACES};
-use glam::{uvec2, UVec2, Vec3};
+use glam::{UVec2, Vec3, uvec2};
 use nest_struct::nest_struct;
 use std::rc::Rc;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::{f32::consts::FRAC_PI_2, fs::File, sync::Arc};
+use vfl::impl_wgpu::ProgramState;
 use vfl::impl_wgpu::draw::CharModel;
 use vfl::impl_wgpu::texture::TextureBundle;
-use vfl::impl_wgpu::ProgramState;
 use vfl::parse::{BinRead, NxCharInfo};
 use vfl::res::shape::ResourceShape;
 use vfl::res::tex::ResourceTexture;
-use wgpu::{util::DeviceExt, Backends, Features};
+use wgpu::{Backends, Features, util::DeviceExt};
 use winit::window::Window;
 
 /// Yeah, yeah.

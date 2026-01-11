@@ -43,7 +43,7 @@ mod cafe {
         texture_data: CafeResourceTextureHeader,
         shape_data: CafeResourceShapeHeader,
 
-        unknown: [u32; 12]
+        unknown: [u32; 12],
     }
 
     /// Arch (Miitomo) Resources are notably different during parsing
@@ -59,7 +59,7 @@ mod cafe {
         texture_data: ArchResourceTextureHeader,
         shape_data: CafeResourceShapeHeader,
 
-        unknown: [u32; 12]
+        unknown: [u32; 12],
     }
 
     #[derive(BinRead, Clone, Copy, Debug)]
@@ -68,7 +68,7 @@ mod cafe {
         /// AKA FaceT_beard
         beard: [CafeResourcePartsInfo; 3],
         cap: [CafeResourcePartsInfo; 132],
-        eye: [CafeResourcePartsInfo; 62], // 62/80 FFL/AFL
+        eye: [CafeResourcePartsInfo; 62],     // 62/80 FFL/AFL
         eyebrow: [CafeResourcePartsInfo; 24], // 24/28 FFL/AFL
         /// FaceT_line, "wrinkle"
         face_t_line: [CafeResourcePartsInfo; 12],
@@ -88,7 +88,7 @@ mod cafe {
         /// AKA FaceT_beard
         beard: [CafeResourcePartsInfo; 3],
         cap: [CafeResourcePartsInfo; 132],
-        eye: [CafeResourcePartsInfo; 80], // 62/80 FFL/AFL
+        eye: [CafeResourcePartsInfo; 80],     // 62/80 FFL/AFL
         eyebrow: [CafeResourcePartsInfo; 28], // 24/28 FFL/AFL
         /// FaceT_line, "wrinkle"
         face_t_line: [CafeResourcePartsInfo; 12],
@@ -125,8 +125,6 @@ mod cafe {
         forehead_hat: [CafeResourcePartsInfo; 132],
     }
 
-
-
     ///  f_f_li_resource_parts_info:
     //         doc: |
     //           For verification, see: nn::mii::detail::ResourceCommonAttribute::IsValid()
@@ -156,11 +154,10 @@ mod cafe {
     }
 
     mod tests {
+        use crate::cafe::{ArchResourceHeader, CafeResourceHeader};
+        use binrw::BinRead;
         use std::fs::File;
         use std::io::BufReader;
-        use binrw::BinRead;
-        use crate::cafe::{ArchResourceHeader, CafeResourceHeader};
-
 
         #[test]
         fn cafe_resources_read() -> Result<(), Box<dyn std::error::Error>> {
@@ -173,6 +170,5 @@ mod cafe {
 
             Ok(())
         }
-
     }
 }

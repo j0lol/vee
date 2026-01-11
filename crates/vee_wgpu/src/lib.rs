@@ -117,8 +117,8 @@ use texture::TextureBundle;
 use vee_models::model::{DrawableTexture, GenericModel3d, Model2d, Vertex};
 use vee_resources::shape::ResourceShape;
 use vee_resources::tex::ResourceTexture;
-use wgpu::{include_wgsl, util::DeviceExt, PipelineCompilationOptions, TexelCopyTextureInfo};
 use wgpu::{BlendState, CommandEncoder, TextureView};
+use wgpu::{PipelineCompilationOptions, TexelCopyTextureInfo, include_wgsl, util::DeviceExt};
 
 pub mod draw;
 pub mod headless;

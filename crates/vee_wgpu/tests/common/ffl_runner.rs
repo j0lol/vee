@@ -1,7 +1,6 @@
 use glam::Mat4;
 use std::{
-    error::Error
-    ,
+    error::Error,
     path::PathBuf,
     process::{Command, Output},
 };

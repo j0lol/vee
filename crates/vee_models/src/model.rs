@@ -1,7 +1,7 @@
 //! Representing models, and other related structures.
 
 use crate::building::trivial_quad;
-use glam::{vec3, Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3, Vec4, vec3};
 use image::DynamicImage;
 use vee_resources::color::nx::ModulationIntent;
 use vee_resources::packing::Float16;

@@ -1,6 +1,6 @@
 use approx::assert_relative_eq;
 use common::{get_mask_data, setup_renderer_linear_color};
-use vee_models::building::{mask_texture_meshes, MaskModels};
+use vee_models::building::{MaskModels, mask_texture_meshes};
 use vee_wgpu::ProgramState;
 
 mod common;

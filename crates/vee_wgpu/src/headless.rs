@@ -1,9 +1,9 @@
 //! Constructs for rendering without a surface (headlessly) i.e. on a server.
 
-use crate::texture::TextureBundle;
 use crate::ProgramState;
+use crate::texture::TextureBundle;
 use camera::{Camera, CameraUniform};
-use glam::{uvec2, UVec2, Vec3};
+use glam::{UVec2, Vec3, uvec2};
 use image::{DynamicImage, RgbaImage};
 use std::f32::consts::FRAC_PI_2;
 use std::fs::File;
@@ -11,7 +11,7 @@ use std::rc::Rc;
 use vee_parse::BinRead;
 use vee_resources::shape::ResourceShape;
 use vee_resources::tex::ResourceTexture;
-use wgpu::{util::DeviceExt, CommandEncoder, DeviceDescriptor};
+use wgpu::{CommandEncoder, DeviceDescriptor, util::DeviceExt};
 
 pub(crate) struct ResourceData {
     pub(crate) texture_header: ResourceTexture,

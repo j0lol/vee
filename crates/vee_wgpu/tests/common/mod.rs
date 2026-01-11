@@ -1,5 +1,5 @@
 use ffl_runner::FFlRunner;
-use glam::{uvec2, Mat4};
+use glam::{Mat4, uvec2};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
@@ -11,7 +11,7 @@ use vee_parse::{BinRead, NxCharInfo};
 use vee_resources::shape::ResourceShape;
 use vee_resources::tex::ResourceTexture;
 use vee_wgpu::texture::TextureBundle;
-use vee_wgpu::{headless::HeadlessRenderer, ProgramState};
+use vee_wgpu::{ProgramState, headless::HeadlessRenderer};
 use wgpu::CommandEncoder;
 
 pub mod ffl_runner;

@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
-use syn::{parse_macro_input, Expr, ItemStruct, Lit, LitInt, Meta};
+use quote::{ToTokens, quote};
+use syn::{Expr, ItemStruct, Lit, LitInt, Meta, parse_macro_input};
 
 /// For internal use. Annotates a bitfield so I don't have to do a bunch of boilerplate.
 /// Enables special binrw maps if n ∈ `[8, 16, 32, 64]`,

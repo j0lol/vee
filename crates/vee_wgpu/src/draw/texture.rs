@@ -4,7 +4,7 @@ use vee_models::building::mask_texture_meshes;
 use vee_models::model::DrawableTexture;
 use vee_parse::NxCharInfo;
 use vee_resources::color;
-use vee_resources::color::nx::{modulate, ColorModulated, ModulationIntent};
+use vee_resources::color::nx::{ColorModulated, ModulationIntent, modulate};
 use vee_resources::tex::TextureElement;
 use wgpu::{CommandEncoder, TextureView};
 

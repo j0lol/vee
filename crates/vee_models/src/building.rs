@@ -1,14 +1,14 @@
 //! Building models. Only the mask needs this operation.
 use super::positioning::{ImageOrigin, MaskFacePart, MaskFaceParts};
 
-use glam::{vec2, Mat4, Quat, Vec2, Vec4};
+use glam::{Mat4, Quat, Vec2, Vec4, vec2};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
 use crate::model::{Model2d, Vertex};
 use crate::{TEX_SCALE_X, TEX_SCALE_Y};
 pub use bytemuck::cast_slice;
 use vee_parse::NxCharInfo;
-use vee_resources::color::nx::{modulate, ColorModulated};
+use vee_resources::color::nx::{ColorModulated, modulate};
 use vee_resources::packing::Float16;
 use vee_resources::tex::{ResourceTexture, TextureElement};
 

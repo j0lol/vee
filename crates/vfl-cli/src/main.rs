@@ -1,4 +1,4 @@
-use clap::{arg, Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum, arg};
 use mesh_tools::compat::point3_new;
 use mesh_tools::{GltfBuilder, Triangle};
 use num_enum::{IntoPrimitive, TryFromPrimitive};

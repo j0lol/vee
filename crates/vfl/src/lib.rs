@@ -23,7 +23,6 @@
 /// Parsing Mii data
 pub use vee_parse as parse;
 
-
 #[cfg(feature = "res")]
 /// Loading Mii textures, meshes, colors
 pub use vee_resources as res;
