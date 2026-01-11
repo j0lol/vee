@@ -1,0 +1,29 @@
+[package]
+name = "render_server"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+exclude.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+
+[dependencies]
+
+maud = { version = "0.27", features = ["poem"] }
+poem = { version = "3", features = ["multipart", "test"] }
+serde = "1"
+serde_json = "1"
+
+wgpu = "25.0.0"
+vfl = { path = "../vfl", features = ["res", "wgpu"] }
+glam = { version = "0.30.3", features = ["bytemuck"] }
+bytemuck = "1.23.0"
+
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process"] }
+
+log = "0.4.28"
+env_logger = "0.11.8"
+image = { version = "0.25.9", features = ["png"] }
+
+

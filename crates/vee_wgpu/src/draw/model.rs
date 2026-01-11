@@ -1,8 +1,8 @@
-use crate::draw::texture::{draw_faceline, draw_glasses, draw_hat, draw_mask, draw_noseline};
 use crate::draw::ModelOpt;
+use crate::draw::texture::{draw_faceline, draw_glasses, draw_hat, draw_mask, draw_noseline};
 use crate::texture::TextureBundle;
 use crate::{Model3d, ProgramState};
-use glam::{uvec2, vec3, vec4, UVec2, Vec3};
+use glam::{UVec2, Vec3, uvec2, vec3, vec4};
 use std::iter::zip;
 use vee_models::model::{GenericModel3d, Vertex};
 use vee_parse::NxCharInfo;
@@ -322,7 +322,7 @@ pub(super) fn hat(
         st,
         char_info,
         Shape::HatNormal,
-        dbg!(char_info.hair_type),
+        char_info.hair_type,
         char_info.favorite_color.0,
         encoder,
     )

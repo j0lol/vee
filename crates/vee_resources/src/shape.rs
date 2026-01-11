@@ -365,7 +365,7 @@ mod tests {
     #[test]
     fn read() -> R {
         let mut bin = BufReader::new(File::open(format!(
-            "{}/resources_here/ShapeMid.dat"
+            "{}/resources_here/ShapeMid.dat",
             std::env::var("CARGO_WORKSPACE_DIR").unwrap()
         ))?);
 

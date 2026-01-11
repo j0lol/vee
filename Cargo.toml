@@ -12,6 +12,7 @@ members = [
     "crates/vee_wgpu",
     "crates/vfl",
     "crates/vfl-cli",
+    "crates/render_server",
 ]
 
 [workspace.package]
@@ -23,5 +24,5 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/j0lol/vee"
 readme = "README.md"
 
-[workspace.lints.rust]
-missing_docs = "warn"
+[workspace.lints]
+
