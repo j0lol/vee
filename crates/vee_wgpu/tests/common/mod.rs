@@ -132,10 +132,10 @@ pub fn get_mask_data() -> MaskTestData {
         serde_json::from_reader(BufReader::new(File::open(file).unwrap())).unwrap()
     } else {
         let mut ffl = FFlRunner {
-            dir: PathBuf::from_str(dbg!(concat!(
+            dir: PathBuf::from_str(&format!(
+                "{}../FFL-Testing/",
                 std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
-                "../FFL-Testing/"
-            )))
+            ))
             .unwrap(),
         };
 

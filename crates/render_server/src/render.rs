@@ -10,6 +10,8 @@ use vfl::res::shape::ResourceShape;
 use vfl::res::tex::ResourceTexture;
 use wgpu::{Backends, Features, util::DeviceExt};
 
+const BODY_SCALE: f32 = 10.0;
+
 struct Camera {
     eye: Vec3,
     target: Vec3,
@@ -139,17 +141,18 @@ pub async fn render_to_texture(
     let char_info = NxCharInfo::read(&mut std::io::Cursor::new(char_info))?;
 
     // Match FFL makeIcon camera configuration
+    // getFaceCamera(): (0, 4.805, 57.553)
     let aspect = width as f32 / height as f32;
-    let fovy = (43.2f32 / aspect).atan2(500.0) / 0.5;
+    let fovy = 15.0f32.to_radians(); // 15 degrees FOV
 
-    let camera = Camera {
-        eye: (0.0, 34.5, 600.0).into(),
-        target: (0.0, 34.5, 0.0).into(),
+    let mut camera = Camera {
+        eye: (0.0, 4.805 * BODY_SCALE, 57.553 * BODY_SCALE).into(),
+        target: (0.0, 4.805 * BODY_SCALE, 0.0).into(),
         up: Vec3::Y,
         aspect,
         fov_y_radians: fovy,
-        znear: 500.0,
-        zfar: 700.0,
+        znear: 50.0,
+        zfar: 1000.0,
     };
 
     let mut camera_uniform = CameraUniform::new();
@@ -229,6 +232,16 @@ pub async fn render_to_texture(
         };
 
         let mut char_model = CharModel::new(&mut state, &char_info, &mut encoder);
+
+        // Adjust camera for body/head
+        let head_pos = char_model.head_transform.transform_point3(Vec3::ZERO) * BODY_SCALE;
+        camera.eye.y += head_pos.y;
+        camera.target.y += head_pos.y;
+
+        camera_uniform.update_view_proj(&camera);
+        state
+            .queue
+            .write_buffer(&camera_buffer, 0, bytemuck::cast_slice(&[camera_uniform]));
 
         {
             encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

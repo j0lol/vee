@@ -9,6 +9,7 @@ use wgpu::TextureFormat;
 
 /// Contains pointers to the texture in VRAM, a view of the texture, and a sampler of the texture.
 /// These are often stored together during rendering.
+#[derive(Clone)]
 pub struct TextureBundle {
     #[allow(unused)]
     pub texture: wgpu::Texture,

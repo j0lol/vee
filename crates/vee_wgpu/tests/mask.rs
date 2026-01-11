@@ -19,9 +19,9 @@ fn render_mask() {
     let image = e.render.output_texture(&e.texture, e.encoder);
 
     image
-        .save(concat!(
+        .save(format!(
+            "{}/test_data/outputs/mask.png",
             std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
-            "/test_data/outputs/mask.png",
         ))
         .unwrap();
 }
@@ -44,9 +44,9 @@ fn render_mask_eyebrows() {
     let image = e.render.output_texture(&e.texture, e.encoder);
 
     image
-        .save(concat!(
+        .save(format!(
+            "{}/test_data/outputs/mask_brows.png",
             std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
-            "/test_data/outputs/mask_brows.png",
         ))
         .unwrap();
 }
