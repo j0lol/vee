@@ -86,6 +86,7 @@ pub mod error;
 pub mod generic;
 pub mod nx;
 pub mod rvl_ntr;
+pub mod studio;
 
 use crate::error::CharConversionError;
 pub use binrw::{BinRead, NullWideString, binrw};
@@ -96,6 +97,7 @@ pub use rvl_ntr::NtrCharData;
 pub use rvl_ntr::NtrStoreData;
 pub use rvl_ntr::RvlCharData;
 pub use rvl_ntr::RvlStoreData;
+pub use studio::StudioCharInfo;
 
 fn u8_to_bool(int: u8, field: String) -> Result<bool, CharConversionError> {
     match int {

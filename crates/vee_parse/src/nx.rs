@@ -22,7 +22,7 @@ pub struct NxColor(pub u8);
 #[binrw]
 #[brw(little)]
 pub struct UuidVer4 {
-    idc: [u8; 16],
+    pub idc: [u8; 16],
 }
 
 /// Bindings to the `.charinfo` format.
