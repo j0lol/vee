@@ -1,5 +1,7 @@
 //! Drawing models and textures.
 
+use std::path::PathBuf;
+
 use crate::draw::model::{beard, face_line, forehead, glasses, hair, hat, mask, nose, nose_line};
 use crate::{Model3d, ProgramState};
 use vee_parse::NxCharInfo;
@@ -35,9 +37,16 @@ impl CharModel {
         char_info: &NxCharInfo,
         encoder: &mut CommandEncoder,
     ) -> CharModel {
+        let res_path: PathBuf = [
+            std::env::var("CARGO_WORKSPACE_DIR").unwrap(),
+            "resources_here".to_string(),
+        ]
+        .iter()
+        .collect();
+
         // TODO: Don't hardcode this path
         let (extras, head_transform) =
-            body::load_body(char_info, "resources_here/miibodymiddle female test.glb")
+            body::load_body(char_info, res_path.join("miibodymiddle female test.glb"))
                 .unwrap_or_else(|e| {
                     panic!("Failed to load GLTF: {}", e);
                 });

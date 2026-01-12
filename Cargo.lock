@@ -3712,6 +3712,7 @@ dependencies = [
  "bytemuck",
  "env_logger",
  "glam",
+ "hex",
  "image 0.25.9",
  "log",
  "maud",

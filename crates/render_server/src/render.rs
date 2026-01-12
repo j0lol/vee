@@ -1,6 +1,7 @@
 use glam::{Vec3, uvec2};
 use std::error::Error;
 use std::fs::File;
+use std::path::Path;
 use std::rc::Rc;
 use vfl::impl_wgpu::ProgramState;
 use vfl::impl_wgpu::draw::CharModel;
@@ -104,8 +105,8 @@ impl ProgramState for RenderState {
 
 /// Renders a Character to a texture and returns the image
 pub async fn render_to_texture(
-    char_info: &[u8],
-    resources_path: &str,
+    char_info: &NxCharInfo,
+    resources_path: &Path,
     width: u32,
     height: u32,
 ) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, Box<dyn Error>> {
@@ -130,15 +131,13 @@ pub async fn render_to_texture(
     let surface_format = wgpu::TextureFormat::Bgra8UnormSrgb;
 
     // Load resources
-    let shape_file_path = format!("{}/ShapeMid.dat", resources_path);
-    let tex_file_path = format!("{}/NXTextureMidSRGB.dat", resources_path);
+    let shape_file_path = resources_path.join("ShapeMid.dat");
+    let tex_file_path = resources_path.join("NXTextureMidSRGB.dat");
 
     let shape_header = ResourceShape::read(&mut File::open(&shape_file_path)?)?;
     let texture_header = ResourceTexture::read(&mut File::open(&tex_file_path)?)?;
     let shape_data = Rc::new(std::fs::read(&shape_file_path)?);
     let texture_data = Rc::new(std::fs::read(&tex_file_path)?);
-
-    let char_info = NxCharInfo::read(&mut std::io::Cursor::new(char_info))?;
 
     // Match FFL makeIcon camera configuration
     // getFaceCamera(): (0, 4.805, 57.553)
