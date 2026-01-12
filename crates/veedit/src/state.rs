@@ -431,7 +431,7 @@ impl State {
                                     ui.selectable_value(&mut self.char_info.gender, 1, "Female");
                                 });
 
-                            let favcol = &mut self.char_info.favorite_color.0;
+                            let favcol = &mut self.char_info.favorite_color;
                             egui::ComboBox::from_label("Favorite Color")
                                 .width(64.0)
                                 .selected_text(format!("{}", favcol))
@@ -509,7 +509,7 @@ impl State {
                             }
                             if ui
                                 .add(
-                                    egui::Slider::new(&mut self.char_info.faceline_color.0, 0..=9)
+                                    egui::Slider::new(&mut self.char_info.faceline_color, 0..=9)
                                         .text("Skin color"),
                                 )
                                 .changed()
@@ -542,7 +542,7 @@ impl State {
                             );
 
                             slider(
-                                egui::Slider::new(&mut self.char_info.hair_color.0, 0..=99)
+                                egui::Slider::new(&mut self.char_info.hair_color, 0..=99)
                                     .text("Hair color"),
                             );
 
@@ -559,7 +559,7 @@ impl State {
                                     .text("Eyebrow type"),
                             );
                             slider(
-                                egui::Slider::new(&mut self.char_info.eyebrow_color.0, 0..=99)
+                                egui::Slider::new(&mut self.char_info.eyebrow_color, 0..=99)
                                     .text("Eyebrow color"),
                             );
 
@@ -591,7 +591,7 @@ impl State {
                                     .text("Eye type"),
                             );
                             slider(
-                                egui::Slider::new(&mut self.char_info.eye_color.0, 0..=99)
+                                egui::Slider::new(&mut self.char_info.eye_color, 0..=99)
                                     .text("Eye color"),
                             );
 
@@ -637,7 +637,7 @@ impl State {
                             );
 
                             slider(
-                                egui::Slider::new(&mut self.char_info.mouth_color.0, 0..=99)
+                                egui::Slider::new(&mut self.char_info.mouth_color, 0..=99)
                                     .text("Mouth Color (lip color?)"),
                             );
 
@@ -660,7 +660,7 @@ impl State {
                                     .text("Glass Type"),
                             );
                             slider(
-                                egui::Slider::new(&mut self.char_info.glass_color.0, 0..=99)
+                                egui::Slider::new(&mut self.char_info.glass_color, 0..=99)
                                     .text("Glass Color"),
                             );
                             slider(
@@ -690,7 +690,7 @@ impl State {
                                     .text("Beard Type"),
                             );
                             slider(
-                                egui::Slider::new(&mut self.char_info.beard_color.0, 0..=99)
+                                egui::Slider::new(&mut self.char_info.beard_color, 0..=99)
                                     .text("Beard Color"),
                             );
 

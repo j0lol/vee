@@ -181,7 +181,7 @@ fn load_meshes(
 ) -> Vec<Model3d> {
     let mut models = Vec::new();
 
-    let favorite_color = FAVORITE_COLOR[char_info.favorite_color.0 as usize];
+    let favorite_color = FAVORITE_COLOR[char_info.favorite_color as usize];
     for node in gltf.nodes() {
         let color = match node.name().unwrap() {
             "body__mt_body" => favorite_color,

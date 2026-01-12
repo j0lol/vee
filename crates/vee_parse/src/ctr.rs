@@ -1,12 +1,12 @@
 use crate::error::CharConversionError;
 use crate::generic::{
     AsGenericChar, Beard, Body, CreationData, CtrCreationData, Eye, Eyebrow, Faceline,
-    FavoriteColor, Gender, GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose,
-    Position, PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
+    FromGenericChar, Gender, GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose,
+    Position, PositionY, Rotation, Scale, ScaleX, UniformScale,
 };
-use crate::nx::NxColor;
 use crate::seal::Sealant;
 use crate::{FixedLengthWideString, GenericChar, u8_to_bool};
+use GenericColor as Color;
 use bilge::prelude::*;
 use binrw::{BinRead, BinWrite, binrw};
 use vee_parse_macros::bitfield;
@@ -182,10 +182,6 @@ pub struct CtrStoreData {
     pub crc: u16,
 }
 
-fn cafe_color_generic(col: u8) -> GenericColor {
-    GenericColor::CafeTable(col.into())
-}
-
 impl Sealant for CtrStoreData {}
 
 impl AsGenericChar for CtrStoreData {
@@ -201,18 +197,18 @@ impl AsGenericChar for CtrStoreData {
             },
             faceline: Faceline {
                 ty: self.face.face_type().as_u8(),
-                color: cafe_color_generic(self.face.face_color().as_u8()),
+                color: Color::cafe_faceline(self.face.face_color().as_u8()),
                 wrinkle_ty: self.face.face_texture().as_u8(),
                 makeup_ty: self.face.face_makeup().as_u8(),
             },
             hair: Hair {
                 ty: self.hair.hair_type(),
-                color: cafe_color_generic(self.hair.hair_color().as_u8()),
+                color: Color::cafe_hair(self.hair.hair_color().as_u8()),
                 flip: u8_to_bool(self.hair.hair_flip().as_u8(), "hair::flip".to_string())?,
             },
             eye: Eye {
                 ty: self.eye.eye_type().as_u8(),
-                color: cafe_color_generic(self.eye.eye_color().as_u8()),
+                color: Color::cafe_eye(self.eye.eye_color().as_u8()),
                 pos: Position {
                     x: self.eye_position.eye_x().as_u8(),
                     y: self.eye_position.eye_y().as_u8(),
@@ -227,7 +223,7 @@ impl AsGenericChar for CtrStoreData {
             },
             eyebrow: Eyebrow {
                 ty: self.eyebrow.eyebrow_type().as_u8(),
-                color: cafe_color_generic(self.eyebrow.eyebrow_color().as_u8()),
+                color: Color::cafe_hair(self.eyebrow.eyebrow_color().as_u8()),
                 pos: Position {
                     x: self.eyebrow_position.eyebrow_x().as_u8(),
                     y: self.eyebrow_position.eyebrow_y().as_u8(),
@@ -251,7 +247,7 @@ impl AsGenericChar for CtrStoreData {
             },
             mouth: Mouth {
                 ty: self.mouth.mouth_type().as_u8(),
-                color: cafe_color_generic(self.mouth.mouth_color().as_u8()),
+                color: Color::cafe_mouth(self.mouth.mouth_color().as_u8()),
                 pos: PositionY {
                     y: self.mouth_position.mouth_y().as_u8(),
                 },
@@ -262,7 +258,7 @@ impl AsGenericChar for CtrStoreData {
             },
             beard: Beard {
                 ty: self.beard.beard_type().as_u8(),
-                color: cafe_color_generic(self.beard.beard_color().as_u8()),
+                color: Color::cafe_hair(self.beard.beard_color().as_u8()),
             },
             mustache: Mustache {
                 ty: self.mouth_position.mustache_type().as_u8(),
@@ -275,7 +271,7 @@ impl AsGenericChar for CtrStoreData {
             },
             glass: Glass {
                 ty: self.glass.glass_type().as_u8(),
-                color: cafe_color_generic(self.glass.glass_color().as_u8()),
+                color: Color::cafe_glass(self.glass.glass_color().as_u8()),
                 pos: PositionY {
                     y: self.glass.glass_y().as_u8(),
                 },
@@ -298,7 +294,9 @@ impl AsGenericChar for CtrStoreData {
                     println!("Warn: Special flag is NOT being read. Placeholder value used.");
                     false
                 },
-                favorite_color: FavoriteColor(self.personal_info_2.favorite_color().as_usize()),
+                favorite_color: Color::favorite_color(
+                    self.personal_info_2.favorite_color().as_u8(),
+                ),
             },
         };
 

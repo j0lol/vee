@@ -132,7 +132,7 @@ pub(crate) fn draw_faceline(
         // Check if we are the first to be rendered out, then add an opaque background.
         // We don't want an opaque redraw happening over our other faceline textures.
         let opaque = (i == 0)
-            .then_some(color::nx::linear::FACELINE_COLOR[usize::from(char_info.faceline_color.0)]);
+            .then_some(color::nx::linear::FACELINE_COLOR[usize::from(char_info.faceline_color)]);
 
         st.draw_texture(
             DrawableTexture {

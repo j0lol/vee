@@ -2,9 +2,9 @@ use crate::{
     FixedLengthWideString, GenericChar,
     error::CharConversionError,
     generic::{
-        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, FavoriteColor,
-        FromGenericChar, Gender, GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose,
-        NxCreationData, Position, PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
+        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, FromGenericChar, Gender,
+        GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose, NxCreationData, Position,
+        PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
     },
     seal::Sealant,
     u8_to_bool,
@@ -38,28 +38,28 @@ pub struct NxCharInfo {
     pub create_info: UuidVer4,
     pub nickname: FixedLengthWideString<11>,
     pub font_region: u8,
-    pub favorite_color: NxColor,
+    pub favorite_color: u8,
     pub gender: u8,
     pub height: u8,
     pub build: u8,
     pub is_special: u8,
     pub region_move: u8,
     pub faceline_type: u8,
-    pub faceline_color: NxColor,
+    pub faceline_color: u8,
     pub faceline_wrinkle: u8,
     pub faceline_make: u8,
     pub hair_type: u8,
-    pub hair_color: NxColor,
+    pub hair_color: u8,
     pub hair_flip: u8,
     pub eye_type: u8,
-    pub eye_color: NxColor,
+    pub eye_color: u8,
     pub eye_scale: u8,
     pub eye_aspect: u8,
     pub eye_rotate: u8,
     pub eye_x: u8,
     pub eye_y: u8,
     pub eyebrow_type: u8,
-    pub eyebrow_color: NxColor,
+    pub eyebrow_color: u8,
     pub eyebrow_scale: u8,
     pub eyebrow_aspect: u8,
     pub eyebrow_rotate: u8,
@@ -69,17 +69,17 @@ pub struct NxCharInfo {
     pub nose_scale: u8,
     pub nose_y: u8,
     pub mouth_type: u8,
-    pub mouth_color: NxColor,
+    pub mouth_color: u8,
     pub mouth_scale: u8,
     pub mouth_aspect: u8,
     pub mouth_y: u8,
-    pub beard_color: NxColor,
+    pub beard_color: u8,
     pub beard_type: u8,
     pub mustache_type: u8,
     pub mustache_scale: u8,
     pub mustache_y: u8,
     pub glass_type: u8,
-    pub glass_color: NxColor,
+    pub glass_color: u8,
     pub glass_scale: u8,
     pub glass_y: u8,
     pub mole_type: u8,
@@ -89,9 +89,7 @@ pub struct NxCharInfo {
     pub reserved: u8, /* always zero */
 }
 
-fn nx_color_generic(col: NxColor) -> GenericColor {
-    GenericColor::NxTable(col.0.into())
-}
+use GenericColor as Color;
 
 impl Sealant for NxCharInfo {}
 
@@ -106,18 +104,18 @@ impl AsGenericChar for NxCharInfo {
             },
             faceline: Faceline {
                 ty: self.faceline_type,
-                color: nx_color_generic(self.faceline_color),
+                color: Color::nx_faceline(self.faceline_color),
                 wrinkle_ty: self.faceline_wrinkle,
                 makeup_ty: self.faceline_make,
             },
             hair: Hair {
                 ty: self.hair_type,
-                color: nx_color_generic(self.hair_color),
+                color: Color::nx_common(self.hair_color),
                 flip: u8_to_bool(self.hair_flip, "hair::flip".to_string())?,
             },
             eye: Eye {
                 ty: self.eye_type,
-                color: nx_color_generic(self.eye_color),
+                color: Color::nx_common(self.eye_color),
                 pos: Position {
                     x: self.eye_x,
                     y: self.eye_y,
@@ -132,7 +130,7 @@ impl AsGenericChar for NxCharInfo {
             },
             eyebrow: Eyebrow {
                 ty: self.eyebrow_type,
-                color: nx_color_generic(self.eyebrow_color),
+                color: Color::nx_common(self.eyebrow_color),
                 pos: Position {
                     x: self.eyebrow_x,
                     y: self.eyebrow_y,
@@ -154,7 +152,7 @@ impl AsGenericChar for NxCharInfo {
             },
             mouth: Mouth {
                 ty: self.mouth_type,
-                color: nx_color_generic(self.mouth_color),
+                color: Color::nx_common(self.mouth_color),
                 pos: PositionY { y: self.mouth_y },
                 scale: Scale {
                     w: self.mouth_scale,
@@ -163,7 +161,7 @@ impl AsGenericChar for NxCharInfo {
             },
             beard: Beard {
                 ty: self.beard_type,
-                color: nx_color_generic(self.beard_color),
+                color: Color::nx_common(self.beard_color),
             },
             mustache: Mustache {
                 ty: self.mustache_y,
@@ -174,7 +172,7 @@ impl AsGenericChar for NxCharInfo {
             },
             glass: Glass {
                 ty: self.glass_type,
-                color: nx_color_generic(self.glass_color),
+                color: Color::nx_common(self.glass_color),
                 pos: PositionY { y: self.glass_y },
                 scale: ScaleX {
                     w: self.glass_scale,
@@ -190,7 +188,7 @@ impl AsGenericChar for NxCharInfo {
             },
             meta_data: MetaData {
                 special: u8_to_bool(self.is_special, "meta_data::special".to_string())?,
-                favorite_color: FavoriteColor(self.favorite_color.0.into()),
+                favorite_color: Color::favorite_color(self.favorite_color),
             },
             creation_data: CreationData::Nx(NxCreationData {
                 create_info: self.create_info,
@@ -205,34 +203,34 @@ impl FromGenericChar for NxCharInfo {
     type Output = NxCharInfo;
 
     fn from_generic(char: GenericChar) -> Self::Output {
-        let plc = NxColor(0);
+        let plc = 0;
 
         NxCharInfo {
             create_info: UuidVer4 { idc: [0; 16] },
             nickname: FixedLengthWideString::from_string(char.name),
             font_region: 0,
-            favorite_color: NxColor(char.meta_data.favorite_color.0 as u8),
+            favorite_color: char.meta_data.favorite_color.to_nx().raw_index(),
             gender: char.body.gender.as_u8(),
             height: char.body.height,
             build: char.body.build,
             is_special: char.meta_data.special as u8,
             region_move: 0,
             faceline_type: char.faceline.ty,
-            faceline_color: plc,
+            faceline_color: char.faceline.color.to_nx().raw_index(),
             faceline_wrinkle: char.faceline.wrinkle_ty,
             faceline_make: char.faceline.makeup_ty,
             hair_type: char.hair.ty,
-            hair_color: plc,
+            hair_color: char.hair.color.to_nx().raw_index(),
             hair_flip: char.hair.flip as u8,
             eye_type: char.eye.ty,
-            eye_color: plc,
+            eye_color: char.eye.color.to_nx().raw_index(),
             eye_scale: char.eye.scale.w,
             eye_aspect: char.eye.scale.h,
             eye_rotate: char.eye.rotation.ang,
             eye_x: char.eye.pos.x,
             eye_y: char.eye.pos.y,
             eyebrow_type: char.eyebrow.ty,
-            eyebrow_color: plc,
+            eyebrow_color: char.eyebrow.color.to_nx().raw_index(),
             eyebrow_scale: char.eyebrow.scale.w,
             eyebrow_aspect: char.eyebrow.scale.h,
             eyebrow_rotate: char.eyebrow.rotation.ang,
@@ -242,17 +240,17 @@ impl FromGenericChar for NxCharInfo {
             nose_scale: char.nose.scale.amount,
             nose_y: char.nose.pos.y,
             mouth_type: char.mouth.ty,
-            mouth_color: plc,
+            mouth_color: char.mouth.color.to_nx().raw_index(),
             mouth_scale: char.mouth.scale.w,
             mouth_aspect: char.mouth.scale.h,
             mouth_y: char.mouth.pos.y,
-            beard_color: plc,
+            beard_color: char.beard.color.to_nx().raw_index(),
             beard_type: char.beard.ty,
             mustache_type: char.mustache.ty,
             mustache_scale: char.mustache.scale.w,
             mustache_y: char.mustache.pos.y,
             glass_type: char.glass.ty,
-            glass_color: plc,
+            glass_color: char.glass.color.to_nx().raw_index(),
             glass_scale: char.glass.scale.w,
             glass_y: char.glass.pos.y,
             mole_type: char.mole.ty,

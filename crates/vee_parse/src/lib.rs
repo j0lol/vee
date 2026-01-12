@@ -166,7 +166,7 @@ mod tests {
 
         assert_eq!(mii.nickname.to_string(), "Jo Null".to_string());
 
-        assert_eq!(mii.glass_color.0, 17);
+        assert_eq!(mii.glass_color, 17);
         assert_eq!(mii.reserved, 0);
 
         Ok(())

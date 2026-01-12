@@ -169,13 +169,13 @@ pub mod nx {
                 channels: [
                     BLACK,
                     WHITE,
-                    linear::COMMON_COLOR[usize::from(char.eye_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.eye_color)],
                 ],
             },
             ColorModulated::Eyebrow => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.eyebrow_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.eyebrow_color)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -183,15 +183,15 @@ pub mod nx {
             ColorModulated::Mouth => ModulationIntent {
                 mode: M::LayeredRgbTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.mouth_color.0)],
-                    linear::UPPER_LIP_COLOR[usize::from(char.mouth_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.mouth_color)],
+                    linear::UPPER_LIP_COLOR[usize::from(char.mouth_color)],
                     WHITE,
                 ],
             },
             ColorModulated::Glass => ModulationIntent {
                 mode: M::LuminanceAlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.glass_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.glass_color)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -203,7 +203,7 @@ pub mod nx {
             ColorModulated::FacelineBeard => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.beard_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.beard_color)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -211,7 +211,7 @@ pub mod nx {
             ColorModulated::FacelineWrinkle => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.faceline_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.faceline_color)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -227,7 +227,7 @@ pub mod nx {
             ColorModulated::Mustache => ModulationIntent {
                 mode: M::AlphaTexture,
                 channels: [
-                    linear::COMMON_COLOR[usize::from(char.beard_color.0)],
+                    linear::COMMON_COLOR[usize::from(char.beard_color)],
                     NON_MODULATION,
                     NON_MODULATION,
                 ],
@@ -236,7 +236,7 @@ pub mod nx {
             ColorModulated::Hat => ModulationIntent {
                 mode: M::LuminanceTexture,
                 channels: {
-                    let [r, g, b] = linear::FAVORITE_COLOR[usize::from(char.favorite_color.0)];
+                    let [r, g, b] = linear::FAVORITE_COLOR[usize::from(char.favorite_color)];
 
                     [
                         // For some reason favorite colors aren't common colors.

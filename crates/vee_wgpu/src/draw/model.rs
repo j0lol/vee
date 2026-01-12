@@ -195,7 +195,7 @@ pub(super) fn face_line(
         char_info,
         Shape::FaceLine,
         char_info.faceline_type,
-        char_info.faceline_color.0,
+        char_info.faceline_color,
         encoder,
     )
 }
@@ -210,7 +210,7 @@ pub(super) fn forehead(
         char_info,
         Shape::ForeheadNormal,
         char_info.hair_type,
-        char_info.faceline_color.0,
+        char_info.faceline_color,
         encoder,
     )
 }
@@ -225,7 +225,7 @@ pub(super) fn hair(
         char_info,
         Shape::HairNormal,
         char_info.hair_type,
-        char_info.hair_color.0,
+        char_info.hair_color,
         encoder,
     )
 }
@@ -255,7 +255,7 @@ pub(super) fn nose(
         char_info,
         Shape::Nose,
         char_info.nose_type,
-        char_info.faceline_color.0,
+        char_info.faceline_color,
         encoder,
     )
 }
@@ -286,7 +286,7 @@ pub(super) fn glasses(
             char_info,
             Shape::Glasses,
             0,
-            char_info.glass_color.0,
+            char_info.glass_color,
             encoder,
         )
     } else {
@@ -305,7 +305,7 @@ pub(super) fn beard(
             char_info,
             Shape::Beard,
             char_info.beard_type,
-            char_info.beard_color.0,
+            char_info.beard_color,
             encoder,
         )
     } else {
@@ -323,7 +323,7 @@ pub(super) fn hat(
         char_info,
         Shape::HatNormal,
         char_info.hair_type,
-        char_info.favorite_color.0,
+        char_info.favorite_color,
         encoder,
     )
 }
