@@ -121,10 +121,7 @@ pub async fn render_to_texture(
         .or(Err("Failed to find an appropriate adapter"))?;
 
     let (device, queue) = adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            required_features: Features::SHADER_F16,
-            ..Default::default()
-        })
+        .request_device(&wgpu::DeviceDescriptor::default())
         .await?;
 
     let size = uvec2(width, height);

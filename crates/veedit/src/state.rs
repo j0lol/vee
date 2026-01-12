@@ -108,10 +108,7 @@ impl State {
             .await
             .unwrap();
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                required_features: Features::SHADER_F16,
-                ..Default::default()
-            })
+            .request_device(&wgpu::DeviceDescriptor::default())
             .await
             .unwrap();
 
