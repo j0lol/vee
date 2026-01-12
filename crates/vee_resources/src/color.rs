@@ -1,20 +1,7 @@
 //! Contains the color tables for Cafe and Nx. Also implements modulation for Nx, (not Cafe yet!)
 //! Expect modulation to become generic in the future.
 
-use std::f64;
-
 type Color = [f32; 4];
-
-// HACK. Expect inaccuracy. Goes "up to" `f64` for hopeful accuracy boost.
-// Thanks http://www.cyril-richon.com/blog/2019/1/23/python-srgb-to-linear-linear-to-srgb
-fn srgb2lin(i: f32) -> f32 {
-    let i: f64 = i.into();
-    (if i <= 0.0404482362771082 {
-        i / 12.92
-    } else {
-        f64::powf((i + 0.055) / 1.055, 2.4)
-    }) as f32
-}
 
 pub mod cafe {
 

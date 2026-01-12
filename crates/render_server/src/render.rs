@@ -230,7 +230,7 @@ pub async fn render_to_texture(
             shape_data,
         };
 
-        let mut char_model = CharModel::new(&mut state, &char_info, &mut encoder);
+        let mut char_model = CharModel::new(&mut state, char_info, &mut encoder);
 
         // Adjust camera for body/head
         let head_pos = char_model.head_transform.transform_point3(Vec3::ZERO) * BODY_SCALE;

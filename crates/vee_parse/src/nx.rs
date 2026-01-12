@@ -4,7 +4,7 @@ use crate::{
     generic::{
         AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, FromGenericChar, Gender,
         GenericColor, Glass, Hair, MetaData, Mole, Mouth, Mustache, Nose, NxCreationData, Position,
-        PositionY, Rotation, Scale, ScaleX, ScaleY, UniformScale,
+        PositionY, Rotation, Scale, ScaleX, UniformScale,
     },
     seal::Sealant,
     u8_to_bool,
@@ -203,8 +203,6 @@ impl FromGenericChar for NxCharInfo {
     type Output = NxCharInfo;
 
     fn from_generic(char: GenericChar) -> Self::Output {
-        let plc = 0;
-
         NxCharInfo {
             create_info: UuidVer4 { idc: [0; 16] },
             nickname: FixedLengthWideString::from_string(char.name),

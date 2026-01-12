@@ -32,6 +32,7 @@ mod cafe {
     /// Shapes contain bounding boxes and textures contain mipmaps.
     /// Other than shapes/textures, this file also contains
     /// transform vectors for each faceline and hair shape.
+    #[allow(unused)]
     #[derive(BinRead, Clone, Copy, Debug)]
     #[br(big, magic = b"FFRA", assert(unknown[11] == 0x0))]
     pub struct CafeResourceHeader {
@@ -48,6 +49,7 @@ mod cafe {
 
     /// Arch (Miitomo) Resources are notably different during parsing
     /// while being derivative of [CafeResourceHeader].
+    #[allow(unused)]
     #[derive(BinRead, Clone, Copy, Debug)]
     #[br(big, magic = b"FFRA", assert(unknown[11] == 0x0))]
     pub struct ArchResourceHeader {
@@ -62,6 +64,7 @@ mod cafe {
         unknown: [u32; 12],
     }
 
+    #[allow(unused)]
     #[derive(BinRead, Clone, Copy, Debug)]
     pub struct CafeResourceTextureHeader {
         max_size: [u32; 11],
@@ -82,6 +85,7 @@ mod cafe {
         nline: [CafeResourcePartsInfo; 18],
     }
 
+    #[allow(unused)]
     #[derive(BinRead, Clone, Copy, Debug)]
     pub struct ArchResourceTextureHeader {
         max_size: [u32; 11],
@@ -102,6 +106,7 @@ mod cafe {
         nline: [CafeResourcePartsInfo; 18],
     }
 
+    #[allow(unused)]
     #[derive(BinRead, Clone, Copy, Debug)]
     #[br(little)]
     pub struct CafeResourceShapeHeader {
@@ -142,6 +147,7 @@ mod cafe {
     //           # Texture footer: Offset is inside DECOMPRESSED block.
     //           # Offset = (decompressed size) - 0x10
     //
+    #[allow(unused)]
     #[derive(BinRead, Clone, Copy, Debug)]
     pub struct CafeResourcePartsInfo {
         offset: u32,
@@ -153,8 +159,9 @@ mod cafe {
         strategy: u8,
     }
 
+    #[cfg(test)]
     mod tests {
-        use crate::cafe::{ArchResourceHeader, CafeResourceHeader};
+        use crate::cafe::ArchResourceHeader;
         use binrw::BinRead;
         use std::fs::File;
         use std::io::BufReader;

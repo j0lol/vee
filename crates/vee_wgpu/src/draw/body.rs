@@ -1,12 +1,11 @@
 use crate::Model3d;
-use glam::{DVec4, Mat4, Quat, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use gltf::animation::util::ReadOutputs;
 use std::collections::HashMap;
 use std::path::Path;
 use vee_models::model::{GenericModel3d, Vertex};
 use vee_parse::NxCharInfo;
 use vee_resources::{color::nx::linear::FAVORITE_COLOR, packing::Float16};
-use wgpu::Color;
 
 #[derive(Clone, Copy, Debug)]
 struct Transform {

@@ -90,7 +90,7 @@ pub(crate) fn load_shape(
                 &format!("projected texture {func:?}"),
             );
 
-            func(st, &char_info, &texture.view, encoder);
+            func(st, char_info, &texture.view, encoder);
 
             Some(texture)
         };
@@ -132,11 +132,11 @@ pub(crate) fn mesh_to_model(
 ) -> Model3d {
     let vertices_count = d.positions.len();
 
-    /// Drop the w component in positions
+    // Drop the w component in positions
     let positions: Vec<_> = d
         .positions
         .into_iter()
-        .map(|[x, y, z, w]| [x, y, z])
+        .map(|[x, y, z, _w]| [x, y, z])
         .collect();
 
     // Unwrap UVs and replace with NaNs if needed...

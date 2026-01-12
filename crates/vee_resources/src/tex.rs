@@ -9,6 +9,7 @@ use std::error::Error;
 use tegra_swizzle::{block_height_mip0, div_round_up, swizzle::deswizzle_block_linear};
 
 /// Specifies information about the texture.
+#[allow(unused)]
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceTextureAttribute {
     alignment: u32,
@@ -231,6 +232,7 @@ impl TextureElement {
 }
 
 /// Header of the `Texture` resource file. Contains texture data for `CharModel`s.
+#[allow(unused)]
 #[derive(BinRead, Clone, Copy)]
 #[br(little, magic = b"NFTR")]
 pub struct ResourceTexture {

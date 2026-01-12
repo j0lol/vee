@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::{Expr, ItemStruct, Lit, LitInt, Meta, parse_macro_input};
 
 /// For internal use. Annotates a bitfield so I don't have to do a bunch of boilerplate.

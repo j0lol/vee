@@ -8,7 +8,6 @@ use crate::{
     },
     nx::UuidVer4,
     seal::Sealant,
-    u8_to_bool,
 };
 use binrw::binrw;
 

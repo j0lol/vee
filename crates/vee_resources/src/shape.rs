@@ -2,15 +2,15 @@
 use crate::inflate_bytes;
 use crate::packing::{Float16, Vec3PackedSnorm};
 use binrw::{BinRead, Endian};
-use num_enum::{FromPrimitive, TryFromPrimitive};
+use num_enum::TryFromPrimitive;
 use std::{
     error::Error,
     io::{Cursor, Read, Seek, SeekFrom},
-    usize,
 };
 // #[cfg(feature = "gltf")]
 // use mesh_tools::GltfBuilder;
 
+#[allow(unused)]
 enum AttributeType {
     Position = 0, // `AttributeFormat_16_16_16_16_Float`
     Normal = 1,   // `AttributeFormat_10_10_10_2_Snorm`
@@ -186,7 +186,7 @@ pub struct ResourceCommonAttribute {
     pub size_compressed: u32,
     pub compression_level: u8,
     pub memory_level: u8,
-    pad: u16,
+    _pad: u16,
 }
 
 /// Specifies where {vertex,index} buffers are, and how big they are.
@@ -240,20 +240,11 @@ impl ShapeElement {
 
         Ok(data)
     }
-
-    /// # Errors
-    /// Can error if:
-    /// - Shape data cannot be parsed
-    #[cfg(feature = "gltf")]
-    pub fn gltf(&mut self, file: &[u8]) -> Result<GltfBuilder, Box<dyn Error>> {
-        let data = self.mesh(file)?;
-
-        Ok(data.gltf(self.shape.bounding_box))
-    }
 }
 
 /// Contains positional data for any headwear that
 /// may be placed on the `CharModel` post-render.
+#[expect(unused)]
 #[derive(BinRead, Debug, Clone, Copy)]
 pub struct ResourceShapeHairTransform {
     front_translate: [f32; 3],
@@ -302,6 +293,7 @@ pub enum GenericResourceShape {
 }
 
 /// Header of the `Shape` resource file. Contains model data for `CharModel`s.
+#[allow(unused)]
 #[derive(BinRead, Debug, Clone, Copy)]
 #[br(little, magic = b"NFSR")]
 pub struct ResourceShape {

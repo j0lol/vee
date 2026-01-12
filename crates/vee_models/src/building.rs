@@ -1,7 +1,7 @@
 //! Building models. Only the mask needs this operation.
 use super::positioning::{ImageOrigin, MaskFacePart, MaskFaceParts};
 
-use glam::{Mat4, Quat, Vec2, Vec4, vec2};
+use glam::{Mat4, Quat, Vec2, vec2};
 
 pub const FACE_OUTPUT_SIZE: u16 = 512;
 use crate::model::{Model2d, Vertex};
@@ -11,8 +11,6 @@ use vee_parse::NxCharInfo;
 use vee_resources::color::nx::{ColorModulated, modulate};
 use vee_resources::packing::Float16;
 use vee_resources::tex::{ResourceTexture, TextureElement};
-
-const NON_REPLACEMENT: [f32; 4] = [f32::NAN, f32::NAN, f32::NAN, f32::NAN];
 
 /// All the models required for rendering the mask texture.
 pub struct MaskModels {
@@ -159,8 +157,6 @@ pub fn model_view_matrix(translation: Vec2, scale: Vec2, rot_z: f32) -> Mat4 {
 fn v2(x: f32, y: f32) -> [f32; 3] {
     [x, y, 0.0]
 }
-
-const OPENGL_TO_WEBGPU_Y_FLIP: Mat4 = Mat4::from_cols(Vec4::X, Vec4::NEG_Y, Vec4::Z, Vec4::W);
 
 // RFL_MakeTex.c :817
 /// Constructs a `Quad` mesh from given arguments.
