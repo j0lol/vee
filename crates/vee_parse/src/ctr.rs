@@ -303,3 +303,164 @@ impl AsGenericChar for CtrStoreData {
         Ok(char)
     }
 }
+
+impl FromGenericChar for CtrStoreData {
+    type Output = CtrStoreData;
+
+    fn from_generic(char: GenericChar) -> Self::Output {
+        // Helper to convert GenericColor back to Ctr format
+        fn extract_cafe_color(color: GenericColor) -> u8 {
+            color.raw_index()
+        }
+
+        CtrStoreData {
+            // Personal info 1 - metadata about the Mii
+            personal_info_1: PersonalInfo1Field::new(
+                0,
+                u1::new(1), // copyable
+                u1::new(0),
+                u2::new(0),
+                u2::new(0),
+                u4::new(0),
+                u4::new(0),
+                u4::new(0),
+                u3::new(0),
+            ),
+
+            author_id: CtrAuthorId {
+                data: [0; 8], // TODO
+            },
+
+            create_id: CtrCreateId {
+                data: [0; 10], // TODO
+            },
+
+            reserved: [0; 2],
+
+            personal_info_2: PersonalInfo2Field::new(
+                u1::new(char.body.gender.as_u8()),
+                u4::new(1), // birth_month (default to January)
+                u5::new(1), // birth_day (default to 1st)
+                u4::new(char.meta_data.favorite_color.raw_index()),
+                u1::new(0), // padding
+            ),
+
+            name: FixedLengthWideString::from_string(char.name.clone()),
+            height: char.body.height,
+            build: char.body.build,
+
+            face: FaceField::new(
+                u1::new(0), // local_only
+                u4::new(char.faceline.ty),
+                u3::new(extract_cafe_color(
+                    char.faceline.color.to_cafe_faceline_or_default(),
+                )),
+                u4::new(char.faceline.wrinkle_ty), // assuming wrinkle -> 'texture'?
+                u4::new(char.faceline.makeup_ty),
+            ),
+
+            hair: HairField::new(
+                char.hair.ty,
+                u3::new(extract_cafe_color(
+                    char.hair.color.to_cafe_hair_or_default(),
+                )),
+                u1::new(char.hair.flip as u8),
+            ),
+
+            eye: EyeField::new(
+                u6::new(char.eye.ty),
+                u3::new(extract_cafe_color(char.eye.color.to_cafe_eye_or_default())),
+                u4::new(char.eye.scale.w),
+                u3::new(char.eye.scale.h),
+            ),
+
+            eye_position: EyePositionField::new(
+                u5::new(char.eye.rotation.ang),
+                u4::new(char.eye.pos.x),
+                u5::new(char.eye.pos.y),
+            ),
+
+            eyebrow: EyebrowField::new(
+                u5::new(char.eyebrow.ty),
+                u3::new(extract_cafe_color(
+                    char.eyebrow.color.to_cafe_hair_or_default(),
+                )),
+                u4::new(char.eyebrow.scale.w),
+                u3::new(char.eyebrow.scale.h),
+            ),
+
+            eyebrow_position: EyebrowPositionField::new(
+                u5::new(char.eyebrow.rotation.ang),
+                u4::new(char.eyebrow.pos.x),
+                u5::new(char.eyebrow.pos.y),
+            ),
+
+            nose: NoseField::new(
+                u5::new(char.nose.ty),
+                u4::new(char.nose.scale.amount),
+                u5::new(char.nose.pos.y),
+            ),
+
+            mouth: MouthField::new(
+                u6::new(char.mouth.ty),
+                u3::new(extract_cafe_color(
+                    char.mouth.color.to_cafe_mouth_or_default(),
+                )),
+                u4::new(char.mouth.scale.w),
+                u3::new(char.mouth.scale.h),
+            ),
+
+            mouth_position: MouthPositionField::new(
+                u5::new(char.mouth.pos.y),
+                u3::new(char.mustache.ty),
+            ),
+
+            beard: BeardField::new(
+                u3::new(char.beard.ty),
+                u3::new(extract_cafe_color(
+                    char.beard.color.to_cafe_hair_or_default(),
+                )),
+                u4::new(char.mustache.scale.w),
+                u5::new(char.mustache.pos.y),
+            ),
+
+            glass: GlassField::new(
+                u4::new(char.glass.ty),
+                u3::new(extract_cafe_color(
+                    char.glass.color.to_cafe_glass_or_default(),
+                )),
+                u4::new(char.glass.scale.w),
+                u5::new(char.glass.pos.y),
+            ),
+
+            mole: MoleField::new(
+                u1::new(char.mole.ty),
+                u4::new(char.mole.scale.w),
+                u5::new(char.mole.pos.x),
+                u5::new(char.mole.pos.y),
+            ),
+
+            creator_name: FixedLengthWideString::from_string(String::new()),
+            padding: 0,
+            crc: 0, // TODO
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::generic::GenericColor;
+
+    #[test]
+    fn example_handling_unmappable_colors() {
+        // Some Nx colors don't exist in Cafe
+        let nx_purple = GenericColor::nx_common(40 | 0x80);
+
+        // Trying to convert to Cafe returns None
+        assert!(nx_purple.to_cafe_hair().is_none());
+
+        // But we can use a default fallback
+        let fallback = nx_purple.to_cafe_hair_or_default();
+        assert_eq!(fallback, GenericColor::cafe_hair(0)); // Black
+    }
+}

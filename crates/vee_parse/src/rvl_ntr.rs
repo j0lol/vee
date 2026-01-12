@@ -1,10 +1,13 @@
 use crate::{
     FixedLengthWideString, GenericChar,
+    error::CharConversionError,
     generic::{
-        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, Glass, Hair, MetaData,
-        Mole, Mouth, Mustache, Nose, PositionY, Rotation, Scale, UniformScale,
+        AsGenericChar, Beard, Body, CreationData, Eye, Eyebrow, Faceline, GenericColor, Glass,
+        Hair, MetaData, Mole, Mouth, Mustache, Nose, Position, PositionY, Rotation,
+        RvlCreationData, Scale, ScaleX, UniformScale,
     },
     seal::Sealant,
+    u8_to_bool,
 };
 use bilge::prelude::*;
 use binrw::{BinRead, BinWrite, binrw};
@@ -312,4 +315,163 @@ pub struct RvlStoreData {
 pub struct NtrStoreData {
     pub data: NtrCharData,
     pub checksum: u16,
+}
+
+impl Sealant for RvlStoreData {}
+impl Sealant for NtrStoreData {}
+impl Sealant for RvlCharData {}
+impl Sealant for NtrCharData {}
+
+use crate::generic::Gender as GenericGender;
+
+impl AsGenericChar for RvlStoreData {
+    fn as_generic(&self) -> Result<GenericChar, CharConversionError> {
+        // Delegate to the inner CharData
+        self.data.as_generic()
+    }
+}
+
+impl AsGenericChar for RvlCharData {
+    fn as_generic(&self) -> Result<GenericChar, CharConversionError> {
+        println!("WARN: Part indices are definitely wrong!");
+        Ok(GenericChar {
+            name: self.name.to_string(),
+
+            body: Body {
+                gender: match self.personal_info.gender() {
+                    Gender::Male => GenericGender::Male,
+                    Gender::Female => GenericGender::Female,
+                },
+                height: self.height,
+                build: self.build,
+            },
+
+            faceline: Faceline {
+                ty: self.face.face_type().as_u8(),
+                color: GenericColor::cafe_faceline(self.face.face_color().as_u8()),
+                wrinkle_ty: 0, // TODO: read face_tex
+                makeup_ty: 0,  // TODO: read face_tex
+            },
+
+            hair: Hair {
+                ty: self.hair.hair_type().as_u8(),
+                // Type-safe hair color
+                color: GenericColor::cafe_hair(self.hair.hair_color().as_u8()),
+                flip: u8_to_bool(self.hair.hair_flip().as_u8(), "hair::flip".to_string())?,
+            },
+
+            eye: Eye {
+                ty: self.eye.eye_type().as_u8(),
+                // Type-safe eye color
+                color: GenericColor::cafe_eye(self.eye.eye_color().as_u8()),
+                pos: Position {
+                    x: self.eye.eye_x().as_u8(),
+                    y: self.eye.eye_y().as_u8(),
+                },
+                scale: Scale {
+                    w: self.eye.eye_scale().as_u8(),
+                    h: self.eye.eye_scale().as_u8(), // RVL uses uniform eye scale
+                },
+                rotation: Rotation {
+                    ang: self.eye.eye_rotate().as_u8(),
+                },
+            },
+
+            eyebrow: Eyebrow {
+                ty: self.eyebrow.eyebrow_type().as_u8(),
+                // Type-safe eyebrow color (uses hair color table)
+                color: GenericColor::cafe_hair(self.eyebrow.eyebrow_color().as_u8()),
+                pos: Position {
+                    x: self.eyebrow.eyebrow_x().as_u8(),
+                    y: self.eyebrow.eyebrow_y().as_u8(),
+                },
+                scale: Scale {
+                    w: self.eyebrow.eyebrow_scale().as_u8(),
+                    h: self.eyebrow.eyebrow_scale().as_u8(), // RVL uses uniform eyebrow scale
+                },
+                rotation: Rotation {
+                    ang: self.eyebrow.eyebrow_rotate().as_u8(),
+                },
+            },
+
+            nose: Nose {
+                ty: self.nose.nose_type().as_u8(),
+                pos: PositionY {
+                    y: self.nose.nose_y().as_u8(),
+                },
+                scale: UniformScale {
+                    amount: self.nose.nose_scale().as_u8(),
+                },
+            },
+
+            mouth: Mouth {
+                ty: self.mouth.mouth_type().as_u8(),
+                // Type-safe mouth color
+                color: GenericColor::cafe_mouth(self.mouth.mouth_color().as_u8()),
+                pos: PositionY {
+                    y: self.mouth.mouth_y().as_u8(),
+                },
+                scale: Scale {
+                    w: self.mouth.mouth_scale().as_u8(),
+                    h: self.mouth.mouth_scale().as_u8(), // RVL uses uniform mouth scale
+                },
+            },
+
+            beard: Beard {
+                ty: self.face_hair.beard_type().as_u8(),
+                // Type-safe beard color (uses hair color table)
+                color: GenericColor::cafe_hair(self.face_hair.beard_color().as_u8()),
+            },
+
+            mustache: Mustache {
+                ty: self.face_hair.mustache_type().as_u8(),
+                pos: PositionY {
+                    y: self.face_hair.beard_y().as_u8(),
+                },
+                scale: ScaleX {
+                    w: self.face_hair.beard_scale().as_u8(),
+                },
+            },
+
+            glass: Glass {
+                ty: self.glass.glass_type().as_u8(),
+                // Type-safe glass color
+                color: GenericColor::cafe_glass(self.glass.glass_color().as_u8()),
+                pos: PositionY {
+                    y: self.glass.glass_y().as_u8(),
+                },
+                scale: ScaleX {
+                    w: self.glass.glass_scale().as_u8(),
+                },
+            },
+
+            mole: Mole {
+                ty: self.mole.mole_type().as_u8(),
+                pos: Position {
+                    x: self.mole.mole_x().as_u8(),
+                    y: self.mole.mole_y().as_u8(),
+                },
+                scale: ScaleX {
+                    w: self.mole.mole_scale().as_u8(),
+                },
+            },
+
+            meta_data: MetaData {
+                special: !self.create_id.flags().normal(), // special = !normal
+                favorite_color: GenericColor::favorite_color(
+                    self.personal_info.favorite_color().as_u8(),
+                ),
+            },
+
+            creation_data: CreationData::Rvl(RvlCreationData {
+                // Add fields here if you implement RvlCreationData
+            }),
+        })
+    }
+}
+
+impl AsGenericChar for NtrCharData {
+    fn as_generic(&self) -> Result<GenericChar, CharConversionError> {
+        todo!() // is anybody going to use this ever?
+    }
 }
