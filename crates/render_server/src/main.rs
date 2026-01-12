@@ -1,7 +1,7 @@
 #![allow(missing_docs)]
 
 use crate::render::render_to_texture;
-use maud::{Markup, html};
+use maud::{DOCTYPE, Markup, html};
 use poem::{
     Response, Route, Server,
     error::BadRequest,
@@ -42,45 +42,70 @@ async fn main() -> Result<(), std::io::Error> {
 #[handler]
 pub async fn get() -> Markup {
     html! {
-        h1 { "Alpha mii-unsecure port" }
-        form method="POST" action="/charinfo" enctype="multipart/form-data" {
-            label {
-                "NxCharInfo, nn::mii::CharInfo"
-                br;
-                input type="file" name="file" accept=".charinfo";
+        ( DOCTYPE )
+        html {
+            head {
+                title { "VEE Icon Renderer" }
+                meta name="viewport" content="width=device-width";
+                meta name="color-scheme" content="light dark";
             }
-            br;
-            button { "Submit NxCharInfo" }
         }
-        hr;
-        form method="POST" action="/ctr" enctype="multipart/form-data" {
-            label {
-                "Ver3StoreData, FFSD, CFSD"
-                br;
-                input type="file" name="file" accept=".ctrstoredata,.ffsd";
+
+        body {
+
+            h1 { "Vee Icon Renderer (Alpha)" }
+
+            p {
+                "This is a work-in-progress renderer. Known missing features:"
             }
-            br;
-            button { "Submit CtrStoreData" }
-        }
-        hr;
-        form method="POST" action="/rvl_char" enctype="multipart/form-data" {
-            label {
-                "RvlCharData, \"RFLCharData\""
-                br;
-                input type="file" name="file" accept=".rvlchardata,.rcd";
+            ul {
+                li { "Shading" }
+                li { "Camera positioning and clear color changing" }
+                li { "Body scaling" }
             }
-            br;
-            button { "Submit RvlCharData" }
-        }
-        hr;
-        form method="POST" action="/studio" {
-            label {
-                "Hex-encoded (base16) CharInfo from Mii Studio"
+            a href="https://github.com/j0lol/vee/tree/main/crates/render_server" { "View source" }
+
+            hr;
+
+            form method="POST" action="/charinfo" enctype="multipart/form-data" {
+                label {
+                    "NxCharInfo, nn::mii::CharInfo"
+                    br;
+                    input type="file" name="file" accept=".charinfo";
+                }
                 br;
-                input type="text" name="data" required size="47" pattern="[a-fA-F0-9]{92,94}";
+                button { "Submit NxCharInfo" }
             }
-            br;
-            button { "Submit StudioCharInfo" }
+            hr;
+            form method="POST" action="/ctr" enctype="multipart/form-data" {
+                label {
+                    "Ver3StoreData, FFSD, CFSD"
+                    br;
+                    input type="file" name="file" accept=".ctrstoredata,.ffsd";
+                }
+                br;
+                button { "Submit CtrStoreData" }
+            }
+            hr;
+            form method="POST" action="/rvl_char" enctype="multipart/form-data" {
+                label {
+                    "RvlCharData, \"RFLCharData\""
+                    br;
+                    input type="file" name="file" accept=".rvlchardata,.rcd";
+                }
+                br;
+                button { "Submit RvlCharData" }
+            }
+            hr;
+            form method="POST" action="/studio" {
+                label {
+                    "Hex-encoded (base16) CharInfo from Mii Studio"
+                    br;
+                    input type="text" name="data" required size="47" pattern="[a-fA-F0-9]{92,94}";
+                }
+                br;
+                button { "Submit StudioCharInfo" }
+            }
         }
 
     }
