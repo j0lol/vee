@@ -1,8 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    # bevy viewer is on the backburner
-    # "crates/bevy_viewer",
     "crates/lightweight_viewer",
     "crates/veedit",
     "crates/vee_models",

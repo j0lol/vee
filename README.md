@@ -34,23 +34,14 @@ This project currently has three binaries:
 
 - `vfl-cli` — Debug tool for quick interfacing with the library.
 - `lightweight_viewer` — Basic test renderer, orbits a few test characters.
-- `bevy_viewer` — Example of using this library in Bevy.
-
-`bevy_viewer` is currently out of the workspace tree, so it has to be run separately.
+- `render_server` — Attempt at reimplementing <https://mii-unsecure.ariankordi.net>.
 
 ### Running
 
 - Dump Nx shape and texture resources, place in `./resources_here`
     - Currently, `vee` only supports `NXTextureMidSRGB.dat` and `ShapeMid.dat`
-- `lightweight_viewer`
-    - `cargo run --bin lightweight_viewer`
-- `vfl-cli`
-    - `cargo run --bin vfl-cli`
-- `bevy_viewer`
-    - `cd crates/bevy_viewer && cargo run`
-    - Running `bevy_viewer` in the browser:
-        - Install [`wasm-server-runner`](https://github.com/jakobhellermann/wasm-server-runner)
-        - `cd crates/bevy_viewer && cargo run --target wasm32-unknown-unknown`
+- `lightweight_viewer`, `vfl-cli`, `render_server`
+    - `cargo run --bin <binary name>`
 
 ## Acknowledgements
 
